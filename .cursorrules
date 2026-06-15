@@ -1,0 +1,21 @@
+Always use the documentation in /docs as the source of truth.
+
+Priority order:
+
+1. PRD.md
+2. MVP_SCOPE.md
+3. DATABASE_SCHEMA.md
+4. WORKFLOWS.md
+
+Rules:
+
+- Use TypeScript everywhere.
+- Use Next.js App Router.
+- Use Supabase for database, auth, and storage.
+- Use PostgreSQL best practices.
+- Never create features outside MVP scope.
+- Prefer simple maintainable solutions.
+- Generate database architecture before UI.
+- Follow documented workflows.
+- Respect role-based permissions.
+- Keep code production-ready.
