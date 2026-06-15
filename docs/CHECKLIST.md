@@ -60,20 +60,20 @@
 ## Phase 2 — Project Setup
 
 ### Development Environment
-- [ ] Create GitHub repository
-- [ ] Create Cursor project
-- [ ] Create Next.js project
-- [ ] Configure TypeScript
-- [ ] Configure TailwindCSS
-- [ ] Configure shadcn/ui
-- [ ] Setup ESLint
-- [ ] Setup Prettier
+- [x] Create GitHub repository
+- [x] Create Cursor project
+- [x] Create Next.js project
+- [x] Configure TypeScript
+- [x] Configure TailwindCSS
+- [x] Configure shadcn/ui
+- [x] Setup ESLint
+- [x] Setup Prettier
 
 ### Infrastructure
-- [ ] Create Supabase project
-- [ ] Configure database
-- [ ] Configure storage bucket
-- [ ] Configure authentication
+- [ ] Create Supabase project (remote — link when ready)
+- [x] Configure database (migrations in repo)
+- [x] Configure storage bucket (migration)
+- [x] Configure authentication (middleware + callback route)
 - [ ] Create Vercel project
 - [ ] Connect GitHub to Vercel
 

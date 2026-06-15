@@ -13,6 +13,7 @@ Source of truth (priority order):
 
 Supporting docs:
 
+- docs/MILESTONE_1_PLAN.md
 - docs/GLOSSARY.md
 - docs/PERMISSIONS.md
 - docs/USER_ROLES.md
