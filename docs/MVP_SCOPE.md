@@ -1,3 +1,4 @@
+# MVP Scope
 
 ## Included In Version 1
 
@@ -5,18 +6,37 @@
 
 - Email login
 - Google login
+- Password reset
+- Invite-only registration (Owner sends invites)
 
 ### User Management
 
 - Owner role
 - Admin role
 - Editor role
+- Owner can invite users and assign roles
+- Owner can assign properties to Editors
+
+### Dashboard
+
+- Total property count
+- Total prospect count
+- Total contact count
+- Total document count
+- Recent activity feed
+- Global search bar
+
+Stat counts only. Charts and advanced analytics are excluded.
 
 ### Property Management
 
 - Create property
 - Edit property
 - View property
+- Archive property
+- Search property
+
+Properties are archived, not permanently deleted, in MVP.
 
 ### Prospect Management
 
@@ -39,11 +59,17 @@
 ### Notes
 
 - Create notes
+- Edit notes (per `PERMISSIONS.md`)
 - View notes
 
 ### Search
 
-- Global search
+- Global search across properties, prospects, contacts, and documents
+
+### Activity
+
+- Log key actions (property, prospect, contact, document, note events)
+- Display recent activity on dashboard
 
 ---
 
@@ -62,3 +88,8 @@
 - Advanced analytics
 - E-signatures
 - Client portals
+- Data import (CSV/Excel)
+- Email updates (Resend)
+- Document preview
+- Bulk edit
+- Note version history

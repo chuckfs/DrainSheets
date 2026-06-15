@@ -26,21 +26,34 @@
 ## Phase 1 — Planning & Architecture
 
 ### Product Requirements
-- [ ] Finalize MVP scope
-- [ ] Define user roles
-- [ ] Define permissions matrix
-- [ ] Define navigation structure
-- [ ] Define dashboard requirements
+- [x] Finalize MVP scope
+- [x] Define user roles
+- [x] Define permissions matrix
+- [x] Define navigation structure (see UI_UX.md)
+- [x] Define dashboard requirements
 
 ### Database Design
-- [ ] Design Users table
-- [ ] Design Clients table
-- [ ] Design Contacts table
-- [ ] Design Documents table
-- [ ] Design Notes table
-- [ ] Design Activity table
-- [ ] Create ER diagram
-- [ ] Review relationships
+- [x] Design Organizations table
+- [x] Design Profiles table
+- [x] Design Properties table
+- [x] Design Prospects table
+- [x] Design Contacts table
+- [x] Design Documents table
+- [x] Design Notes table
+- [x] Design Activity table
+- [x] Design Property Assignments table
+- [x] Design Invitations table
+- [x] Create ER diagram (see DATABASE_SCHEMA.md)
+- [x] Review relationships
+- [x] Define RLS policy approach
+- [x] Define search indexes
+
+### Documentation Freeze (Milestone 0)
+- [x] Glossary (GLOSSARY.md)
+- [x] Permissions matrix (PERMISSIONS.md)
+- [x] PRD reconciled to Property/Prospect model
+- [x] MVP scope updated
+- [x] Database schema extended
 
 ---
 
@@ -92,27 +105,38 @@
 - [ ] Add search bar
 
 ### Dashboard Widgets
-- [ ] Total clients count
+- [ ] Total properties count
+- [ ] Total prospects count
 - [ ] Total contacts count
+- [ ] Total documents count
 - [ ] Recent activity
 - [ ] Recent uploads
 
 ---
 
-## Phase 5 — Client Management
+## Phase 5 — Property Management
 
-### Client CRUD
-- [ ] Create client
-- [ ] Edit client
-- [ ] Delete client
-- [ ] Archive client
-- [ ] View client details
+### Property CRUD
+- [ ] Create property
+- [ ] Edit property
+- [ ] Archive property
+- [ ] View property details
 
-### Client Table
-- [ ] Sort clients
-- [ ] Filter clients
-- [ ] Search clients
+### Property Table
+- [ ] Sort properties
+- [ ] Filter properties
+- [ ] Search properties
 - [ ] Pagination
+
+### Prospect CRUD
+- [ ] Create prospect
+- [ ] Edit prospect
+- [ ] View prospect details
+
+### Prospect Table
+- [ ] Sort prospects
+- [ ] Filter prospects
+- [ ] Search prospects
 
 ---
 
@@ -121,12 +145,11 @@
 ### Contact CRUD
 - [ ] Create contact
 - [ ] Edit contact
-- [ ] Delete contact
 - [ ] View contact details
 
 ### Contact Linking
-- [ ] Link contact to client
-- [ ] Display contacts on client page
+- [ ] Link contact to prospect
+- [ ] Display contacts on prospect page
 
 ---
 
@@ -143,9 +166,10 @@
 - [ ] Create storage policies
 - [ ] Secure document access
 
-### Client Documents
-- [ ] Attach documents to client
-- [ ] View client documents
+### Property Documents
+- [ ] Attach documents to property
+- [ ] Attach documents to prospect
+- [ ] View property documents
 - [ ] Search documents
 
 ---
@@ -167,14 +191,15 @@
 ## Phase 9 — Activity Tracking
 
 ### Activity Feed
-- [ ] Log client creation
+- [ ] Log property creation
+- [ ] Log prospect creation
 - [ ] Log contact creation
 - [ ] Log document uploads
 - [ ] Log note creation
 - [ ] Log edits
 
 ### Activity Display
-- [ ] Client activity timeline
+- [ ] Property activity timeline
 - [ ] Global activity feed
 
 ---
@@ -183,8 +208,9 @@
 
 ### User Management
 - [ ] Invite users
-- [ ] Remove users
+- [ ] Remove users (disable)
 - [ ] Change user roles
+- [ ] Assign properties to editors
 
 ### Access Control
 - [ ] Owner permissions
@@ -226,7 +252,8 @@
 
 ### Functional Testing
 - [ ] User authentication
-- [ ] Client CRUD
+- [ ] Property CRUD
+- [ ] Prospect CRUD
 - [ ] Contact CRUD
 - [ ] File uploads
 - [ ] Notes

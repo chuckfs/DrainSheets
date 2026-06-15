@@ -1,15 +1,20 @@
+# User Roles
+
+See `PERMISSIONS.md` for the full permissions matrix.
+
+---
 
 ## Owner
 
 Permissions:
 
-- Manage users
-- Create properties
-- Edit properties
-- Delete properties
-- Upload documents
-- View all data
-- Manage permissions
+- Invite and manage users
+- Assign properties to Editors
+- Create, edit, and archive properties
+- Manage prospects and contacts
+- Upload and delete documents
+- Create, edit, and delete notes
+- View all data and activity in the organization
 
 ---
 
@@ -17,17 +22,18 @@ Permissions:
 
 Permissions:
 
-- Create properties
-- Edit properties
-- Manage prospects
-- Manage contacts
-- Upload documents
-- Add notes
+- Create and edit properties
+- Archive properties
+- Manage prospects and contacts
+- Upload and delete documents
+- Create, edit, and delete notes
+- View all data and activity in the organization
 
 Restrictions:
 
-- Cannot manage owners
-- Cannot modify billing
+- Cannot invite or manage users
+- Cannot assign properties to Editors
+- Cannot modify ownership or billing
 
 ---
 
@@ -35,12 +41,16 @@ Restrictions:
 
 Permissions:
 
-- View data
-- Edit records
-- Upload files
-- Add notes
+- View assigned properties and related data
+- Edit records on assigned properties
+- Upload files on assigned properties
+- Create notes on assigned properties
+- Edit and delete own notes
+- Delete own document uploads
 
 Restrictions:
 
 - Cannot manage users
-- Cannot delete major records
+- Cannot invite users
+- Cannot archive properties
+- Cannot access unassigned properties

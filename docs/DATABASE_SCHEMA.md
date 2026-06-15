@@ -7,34 +7,52 @@ DrainSheets is a CRM and document management platform for commercial real estate
 Users manage:
 
 - Properties
-- Tenant Prospects
-- Franchise Prospects
+- Prospects
 - Contacts
 - Documents
 - Notes
 
-The system is organized around Properties and Prospect Lists.
+The system is organized around an Organization, Properties, and Prospect Lists.
+
+See `GLOSSARY.md` for terminology and `PERMISSIONS.md` for access rules.
 
 ---
 
 # Entity Relationship Overview
 
+```
 Organization
-├── Users
+├── Profiles (users)
+├── Invitations
 ├── Properties
 │   ├── Prospects
-│   ├── Contacts
-│   ├── Documents
-│   └── Notes
+│   │   └── Contacts
+│   ├── Documents (prospect_id optional)
+│   ├── Notes (prospect_id optional)
+│   └── Property Assignments → Profiles
 └── Activity
+```
 
 ---
 
-# Users
+# Enums
+
+```
+user_role:        owner | admin | editor
+user_status:      active | invited | disabled
+property_status:  active | archived
+prospect_status:  researching | contacted | interested | passed | closed
+```
+
+`prospect_status` values may be adjusted after client discovery.
+
+---
+
+# Organizations
 
 Purpose:
 
-Stores authenticated users.
+Represents the company using DrainSheets. Single organization per deployment in MVP.
 
 Fields:
 
@@ -46,14 +64,43 @@ name
 - Text
 - Required
 
+created_at
+- Timestamp
+
+---
+
+# Profiles
+
+Purpose:
+
+Extends `auth.users` with application-specific fields. One profile per authenticated user.
+
+Fields:
+
+id
+- UUID
+- Primary Key
+- References `auth.users(id)`
+
+org_id
+- UUID
+- Foreign Key → organizations
+
+name
+- Text
+- Required
+
 email
 - Text
 - Unique
 
 role
-- owner
-- admin
-- editor
+- user_role enum
+- Required
+
+status
+- user_status enum
+- Default: active
 
 created_at
 - Timestamp
@@ -67,7 +114,7 @@ updated_at
 
 Purpose:
 
-Represents a commercial property or project.
+Represents a commercial property, project, or prospecting initiative.
 
 Examples:
 
@@ -81,6 +128,10 @@ id
 - UUID
 - Primary Key
 
+org_id
+- UUID
+- Foreign Key → organizations
+
 name
 - Text
 - Required
@@ -89,11 +140,12 @@ description
 - Text
 
 status
-- active
-- archived
+- property_status enum
+- Default: active
 
 created_by
 - UUID
+- Foreign Key → profiles
 
 created_at
 - Timestamp
@@ -107,7 +159,7 @@ updated_at
 
 Purpose:
 
-Stores businesses being targeted.
+Stores businesses being targeted within a property.
 
 Examples:
 
@@ -124,10 +176,11 @@ id
 
 property_id
 - UUID
-- Foreign Key
+- Foreign Key → properties
 
 company_name
 - Text
+- Required
 
 category
 - Text
@@ -136,7 +189,7 @@ website
 - Text
 
 status
-- Text
+- prospect_status enum
 
 comments
 - Text
@@ -159,12 +212,15 @@ Fields:
 
 id
 - UUID
+- Primary Key
 
 prospect_id
 - UUID
+- Foreign Key → prospects
 
 name
 - Text
+- Required
 
 title
 - Text
@@ -190,30 +246,48 @@ updated_at
 
 Purpose:
 
-Stores files attached to properties or prospects.
+Stores file metadata. Files live in Supabase Storage.
 
 Fields:
 
 id
 - UUID
+- Primary Key
 
 property_id
 - UUID
+- Foreign Key → properties
+- Required
 
 prospect_id
 - UUID
+- Foreign Key → prospects
+- Optional
 
 file_name
 - Text
+- Required
 
 file_path
 - Text
+- Required (storage path)
+
+mime_type
+- Text
+
+file_size
+- BigInt (bytes)
 
 uploaded_by
 - UUID
+- Foreign Key → profiles
 
 created_at
 - Timestamp
+
+Constraint:
+
+If `prospect_id` is set, the prospect must belong to `property_id`.
 
 ---
 
@@ -221,29 +295,114 @@ created_at
 
 Purpose:
 
-Stores internal notes.
+Stores internal notes on properties or prospects.
 
 Fields:
 
 id
 - UUID
+- Primary Key
 
 property_id
 - UUID
+- Foreign Key → properties
+- Required
 
 prospect_id
 - UUID
+- Foreign Key → prospects
+- Optional
 
 user_id
 - UUID
+- Foreign Key → profiles
 
 content
 - Text
+- Required
 
 created_at
 - Timestamp
 
 updated_at
+- Timestamp
+
+Constraint:
+
+If `prospect_id` is set, the prospect must belong to `property_id`.
+
+---
+
+# Property Assignments
+
+Purpose:
+
+Grants Editors access to specific properties.
+
+Fields:
+
+id
+- UUID
+- Primary Key
+
+property_id
+- UUID
+- Foreign Key → properties
+
+user_id
+- UUID
+- Foreign Key → profiles
+
+created_at
+- Timestamp
+
+Unique:
+
+(property_id, user_id)
+
+---
+
+# Invitations
+
+Purpose:
+
+Tracks pending user invites sent by the Owner.
+
+Fields:
+
+id
+- UUID
+- Primary Key
+
+org_id
+- UUID
+- Foreign Key → organizations
+
+email
+- Text
+- Required
+
+role
+- user_role enum
+- Default: editor
+
+token_hash
+- Text
+- Required
+
+expires_at
+- Timestamp
+- Required
+
+accepted_at
+- Timestamp
+- Nullable
+
+invited_by
+- UUID
+- Foreign Key → profiles
+
+created_at
 - Timestamp
 
 ---
@@ -252,46 +411,115 @@ updated_at
 
 Purpose:
 
-Audit trail.
+Append-only audit trail for the dashboard activity feed.
 
 Fields:
 
 id
 - UUID
+- Primary Key
+
+org_id
+- UUID
+- Foreign Key → organizations
 
 user_id
+- UUID
+- Foreign Key → profiles
+
+entity_type
+- Text
+- e.g. property, prospect, contact, document, note
+
+entity_id
 - UUID
 
 property_id
 - UUID
+- Foreign Key → properties
+- Nullable (denormalized for filtering)
 
 action
 - Text
+- e.g. created, updated, archived, uploaded, deleted
+
+metadata
+- JSONB
+- Optional context (entity name, file name, etc.)
 
 created_at
 - Timestamp
 
 ---
 
-# Permissions
+# Indexes
 
-Owner
+```
+profiles(org_id)
+profiles(email)
 
-- Full access
+properties(org_id, status)
+properties(org_id, name)
 
-Admin
+prospects(property_id)
+prospects(company_name)
 
-- Create
-- Edit
-- Upload
-- Manage records
+contacts(prospect_id)
+contacts(email)
 
-Editor
+documents(property_id)
+documents(prospect_id)
 
-- View
-- Edit
-- Add notes
-- Upload files
+notes(property_id)
+notes(prospect_id)
+
+property_assignments(user_id, property_id) UNIQUE
+
+activity(org_id, created_at DESC)
+activity(property_id, created_at DESC)
+
+invitations(org_id, email)
+invitations(token_hash)
+```
+
+Full-text search (GIN) on:
+
+- properties.name
+- prospects.company_name, prospects.category
+- contacts.name, contacts.email
+- documents.file_name
+- notes.content
+
+---
+
+# Row-Level Security
+
+RLS is enabled on all tables. Access is enforced at the database layer.
+
+Helper functions:
+
+```
+has_role(min_role user_role) → boolean
+is_org_member(org_id uuid) → boolean
+can_access_property(property_id uuid) → boolean
+```
+
+Access rules:
+
+| Table | Read | Write |
+|-------|------|-------|
+| organizations | org members | Owner only |
+| profiles | org members | self (name); Owner (role, status) |
+| properties | per `PERMISSIONS.md` | per `PERMISSIONS.md` |
+| prospects | via property access | via property access |
+| contacts | via property access | via property access |
+| documents | via property access | via property access |
+| notes | via property access | per `PERMISSIONS.md` |
+| property_assignments | Owner, Admin | Owner only |
+| invitations | Owner | Owner only |
+| activity | per `PERMISSIONS.md` | server/trigger insert only |
+
+Editors can only access properties where a `property_assignments` row exists for their user ID. Owners and Admins can access all properties in the organization.
 
 ---
 
@@ -316,19 +544,38 @@ Documents
 Notes
 - content
 
+Implemented via PostgreSQL full-text search and a `search_global` RPC function.
+
 ---
 
 # Storage Structure
 
-documents/
+Private bucket: `documents`
 
-property-id/
+Path pattern:
 
-file.pdf
+```
+{org_id}/{property_id}/{document_id}_{sanitized_filename}
+```
 
-lease.pdf
+When attached to a prospect, the database `prospect_id` field links the file. The storage path remains under the property folder.
 
-contact-sheet.xlsx
+---
+
+# Referential Integrity
+
+| Relationship | ON DELETE |
+|--------------|-----------|
+| prospects → properties | CASCADE |
+| contacts → prospects | CASCADE |
+| documents → properties | CASCADE |
+| documents → prospects | SET NULL |
+| notes → properties | CASCADE |
+| notes → prospects | SET NULL |
+| property_assignments → properties | CASCADE |
+| property_assignments → profiles | CASCADE |
+
+Properties are archived, not deleted, in MVP. Hard deletes are Owner-only and reserved for future use.
 
 ---
 

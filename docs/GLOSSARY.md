@@ -1,8 +1,12 @@
 # Glossary
 
+Canonical terminology for DrainSheets. Use these terms consistently in code, UI, and documentation.
+
+---
+
 ## Organization
 
-A company using DrainSheets.
+The company using DrainSheets. All users and data belong to one organization in MVP.
 
 Example:
 
@@ -23,7 +27,7 @@ Examples:
 
 ## Prospect
 
-A business being targeted.
+A business being targeted within a property.
 
 Examples:
 
@@ -47,7 +51,7 @@ Examples:
 
 ## Document
 
-A file attached to a property or prospect.
+A file attached to a property. May optionally be linked to a prospect.
 
 Examples:
 
@@ -59,4 +63,16 @@ Examples:
 
 ## Note
 
-Internal commentary related to a property or prospect.
+Internal commentary on a property or prospect.
+
+---
+
+## Property Assignment
+
+A link between an Editor and a property they are allowed to access.
+
+---
+
+## Client (paying customer)
+
+When documentation refers to "the client," it means the paying customer of DrainSheets (the real estate team), not a data entity. Do not use "client" as a table or UI label — use **Property** instead.

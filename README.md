@@ -4,16 +4,22 @@ DrainSheets is a lightweight commercial real estate CRM and document management 
 
 ## Documentation
 
-See:
+Source of truth (priority order):
 
-- docs/PRD.md
-- docs/DATABASE_SCHEMA.md
+1. docs/PRD.md
+2. docs/MVP_SCOPE.md
+3. docs/DATABASE_SCHEMA.md
+4. docs/WORKFLOWS.md
+
+Supporting docs:
+
+- docs/GLOSSARY.md
+- docs/PERMISSIONS.md
+- docs/USER_ROLES.md
 - docs/ROADMAP.md
 - docs/CHECKLIST.md
-- docs/WORKFLOWS.md
-- docs/USER_ROLES.md
-- docs/MVP_SCOPE.md
 - docs/TECH_STACK.md
+- docs/UI_UX.md
 - docs/DECISIONS.md
 
 ## Tech Stack
