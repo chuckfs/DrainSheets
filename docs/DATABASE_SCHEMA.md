@@ -136,6 +136,18 @@ name
 - Text
 - Required
 
+address
+- Text
+- Optional
+
+city
+- Text
+- Optional
+
+state
+- Text
+- Optional
+
 description
 - Text
 
@@ -152,6 +164,14 @@ created_at
 
 updated_at
 - Timestamp
+
+Indexes:
+
+- org_id
+- status
+- name
+- city
+- state
 
 ---
 
