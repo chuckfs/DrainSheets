@@ -1,3 +1,4 @@
+import { requireProfile } from "@/lib/auth/guards";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { SiteHeader } from "@/components/layout/site-header";
 import { Separator } from "@/components/ui/separator";
@@ -11,12 +12,14 @@ const navItems = [
   { href: "/settings", label: "Settings" },
 ] as const;
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const profile = await requireProfile();
+
   return (
     <div className="flex min-h-screen">
       <AppSidebar items={navItems} />
       <div className="flex flex-1 flex-col">
-        <SiteHeader />
+        <SiteHeader profile={profile} />
         <Separator />
         <main className="flex-1 p-6">{children}</main>
       </div>

@@ -82,17 +82,19 @@
 ## Phase 3 — Authentication
 
 ### User Accounts
-- [ ] Email login
-- [ ] Password reset
-- [ ] Google login
-- [ ] Session management
+- [x] Email login
+- [x] Password reset
+- [x] Google login
+- [x] Session management
 
 ### Permissions
-- [ ] Owner role
-- [ ] Admin role
-- [ ] Editor role
-- [ ] Route protection
-- [ ] Permission middleware
+- [x] Owner role
+- [x] Admin role
+- [x] Editor role
+- [x] Route protection
+- [x] Permission middleware
+- [x] Invite-only signup flow
+- [x] Owner user management (Settings → Users)
 
 ---
 
