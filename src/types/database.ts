@@ -94,47 +94,83 @@ export type Database = {
       }
       contacts: {
         Row: {
+          company: string | null
           created_at: string
+          created_by: string | null
           email: string | null
+          first_name: string
           id: string
-          name: string
+          last_name: string | null
           notes: string | null
+          org_id: string
           phone: string | null
           prospect_id: string
           search_vector: unknown
           title: string | null
           updated_at: string
+          updated_by: string | null
         }
         Insert: {
+          company?: string | null
           created_at?: string
+          created_by?: string | null
           email?: string | null
+          first_name: string
           id?: string
-          name: string
+          last_name?: string | null
           notes?: string | null
+          org_id: string
           phone?: string | null
           prospect_id: string
           search_vector?: unknown
           title?: string | null
           updated_at?: string
+          updated_by?: string | null
         }
         Update: {
+          company?: string | null
           created_at?: string
+          created_by?: string | null
           email?: string | null
+          first_name?: string
           id?: string
-          name?: string
+          last_name?: string | null
           notes?: string | null
+          org_id?: string
           phone?: string | null
           prospect_id?: string
           search_vector?: unknown
           title?: string | null
           updated_at?: string
+          updated_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "contacts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contacts_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "contacts_prospect_id_fkey"
             columns: ["prospect_id"]
             isOneToOne: false
             referencedRelation: "prospects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contacts_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -536,6 +572,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      current_user_org_id: { Args: never; Returns: string }
       default_organization_id: { Args: never; Returns: string }
       documents_storage_path_org_id: { Args: { path: string }; Returns: string }
       documents_storage_path_property_id: {

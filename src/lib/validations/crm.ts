@@ -78,3 +78,42 @@ export function prospectInputToRow(input: ProspectInput) {
     comments: emptyToNull(input.comments),
   };
 }
+
+export const contactSchema = z.object({
+  first_name: z.string().min(1, "First name is required").max(100),
+  last_name: z.string().max(100).optional().or(z.literal("")),
+  title: z.string().max(100).optional().or(z.literal("")),
+  company: z.string().max(200).optional().or(z.literal("")),
+  email: z.preprocess(
+    (val) => (typeof val === "string" && val.trim() === "" ? undefined : val),
+    z.string().email("Enter a valid email").optional(),
+  ),
+  phone: z.string().max(50).optional().or(z.literal("")),
+  notes: z.string().max(2000).optional().or(z.literal("")),
+});
+
+export type ContactInput = z.infer<typeof contactSchema>;
+
+export function parseContactForm(formData: FormData) {
+  return contactSchema.safeParse({
+    first_name: formData.get("first_name"),
+    last_name: formData.get("last_name") ?? "",
+    title: formData.get("title") ?? "",
+    company: formData.get("company") ?? "",
+    email: formData.get("email") ?? "",
+    phone: formData.get("phone") ?? "",
+    notes: formData.get("notes") ?? "",
+  });
+}
+
+export function contactInputToRow(input: ContactInput) {
+  return {
+    first_name: input.first_name.trim(),
+    last_name: emptyToNull(input.last_name),
+    title: emptyToNull(input.title),
+    company: emptyToNull(input.company),
+    email: emptyToNull(input.email),
+    phone: emptyToNull(input.phone),
+    notes: emptyToNull(input.notes),
+  };
+}

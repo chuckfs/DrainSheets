@@ -1,23 +1,28 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProspect } from "@/actions/prospects";
+import { listContacts } from "@/actions/contacts";
+import { ProspectContactsTable } from "@/components/contacts/prospect-contacts-table";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { requireProfile } from "@/lib/auth/guards";
+import { canDeleteContact, canEditContact } from "@/lib/permissions/contact";
 
 export default async function ProspectDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireProfile();
+  const profile = await requireProfile();
   const { id } = await params;
   const prospect = await getProspect(id);
 
   if (!prospect) {
     notFound();
   }
+
+  const { contacts } = await listContacts({ prospectId: id, page: 1 });
 
   return (
     <div className="space-y-6">
@@ -73,9 +78,25 @@ export default async function ProspectDetailPage({
         </div>
       )}
 
-      <p className="text-sm text-muted-foreground">
-        Contacts and documents for this prospect ship in Milestones 4–5.
-      </p>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-medium">Contacts</h2>
+          {canEditContact(profile) && (
+            <Link
+              href={`/prospects/${id}/contacts/new`}
+              className={cn(buttonVariants({ size: "sm" }))}
+            >
+              Add contact
+            </Link>
+          )}
+        </div>
+        <ProspectContactsTable
+          contacts={contacts}
+          prospectId={id}
+          canEdit={canEditContact(profile)}
+          canDelete={canDeleteContact(profile)}
+        />
+      </div>
     </div>
   );
 }
