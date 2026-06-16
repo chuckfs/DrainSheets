@@ -7,9 +7,11 @@ import {
 import { getProperty } from "@/actions/properties";
 import { listProspects } from "@/actions/prospects";
 import { getDocumentsForProperty } from "@/actions/documents";
+import { getNotesForProperty } from "@/actions/notes";
 import { ArchivePropertyButton } from "@/components/properties/archive-property-button";
 import { PropertyAssignmentsPanel } from "@/components/properties/property-assignments-panel";
 import { PropertyDocumentsSection } from "@/components/documents/property-documents-section";
+import { NotesSection } from "@/components/notes/notes-section";
 import { ProspectsTable } from "@/components/prospects/prospects-table";
 import { requireProfile } from "@/lib/auth/guards";
 import {
@@ -37,6 +39,7 @@ export default async function PropertyDetailPage({
 
   const { prospects } = await listProspects({ propertyId: id, page: 1 });
   const documents = await getDocumentsForProperty(id);
+  const notes = await getNotesForProperty(id);
   const assignments = canManageAssignments(profile)
     ? await listPropertyAssignments(id)
     : [];
@@ -105,6 +108,8 @@ export default async function PropertyDetailPage({
         profile={profile}
         canUpload={canUploadDocument(profile) && property.status === "active"}
       />
+
+      <NotesSection notes={notes} profile={profile} propertyId={id} />
     </div>
   );
 }

@@ -302,6 +302,7 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          org_id: string
           property_id: string
           prospect_id: string | null
           search_vector: unknown
@@ -312,6 +313,7 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          org_id: string
           property_id: string
           prospect_id?: string | null
           search_vector?: unknown
@@ -322,6 +324,7 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          org_id?: string
           property_id?: string
           prospect_id?: string | null
           search_vector?: unknown
@@ -329,6 +332,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "notes_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "notes_property_id_fkey"
             columns: ["property_id"]
