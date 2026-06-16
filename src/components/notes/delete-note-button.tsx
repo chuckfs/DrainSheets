@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { deleteNote } from "@/actions/notes";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 export function DeleteNoteButton({
   noteId,
@@ -26,7 +27,7 @@ export function DeleteNoteButton({
       if (result.success) {
         router.refresh();
       } else {
-        alert(result.error);
+        toast.error(result.error);
       }
     });
   }

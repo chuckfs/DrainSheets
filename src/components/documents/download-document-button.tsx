@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { generateDownloadUrl } from "@/actions/documents";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
 export function DownloadDocumentButton({
@@ -17,12 +18,12 @@ export function DownloadDocumentButton({
     startTransition(async () => {
       const result = await generateDownloadUrl(documentId);
       if (!result.success) {
-        alert(result.error ?? "Download failed");
+        toast.error(result.error ?? "Download failed");
         return;
       }
 
       if (!result.data?.url) {
-        alert("Download failed");
+        toast.error("Download failed");
         return;
       }
 

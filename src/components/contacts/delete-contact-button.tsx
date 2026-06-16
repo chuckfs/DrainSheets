@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { deleteContact } from "@/actions/contacts";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 export function DeleteContactButton({
   contactId,
@@ -31,7 +32,7 @@ export function DeleteContactButton({
         }
         router.refresh();
       } else {
-        alert(result.error);
+        toast.error(result.error);
       }
     });
   }

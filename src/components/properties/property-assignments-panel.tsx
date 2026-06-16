@@ -5,6 +5,7 @@ import { useTransition } from "react";
 import { assignEditor, unassignEditor } from "@/actions/assignments";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 type Editor = { id: string; name: string; email: string };
 type Assignment = {
@@ -31,7 +32,7 @@ export function PropertyAssignmentsPanel({
   function handleAssign(userId: string) {
     startTransition(async () => {
       const result = await assignEditor(propertyId, userId);
-      if (!result.success) alert(result.error);
+      if (!result.success) toast.error(result.error);
       router.refresh();
     });
   }
@@ -39,7 +40,7 @@ export function PropertyAssignmentsPanel({
   function handleUnassign(userId: string) {
     startTransition(async () => {
       const result = await unassignEditor(propertyId, userId);
-      if (!result.success) alert(result.error);
+      if (!result.success) toast.error(result.error);
       router.refresh();
     });
   }

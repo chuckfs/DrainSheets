@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { archiveProperty } from "@/actions/properties";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
 export function ArchivePropertyButton({ propertyId, propertyName }: { propertyId: string; propertyName: string }) {
@@ -19,7 +20,7 @@ export function ArchivePropertyButton({ propertyId, propertyName }: { propertyId
         router.push("/properties");
         router.refresh();
       } else {
-        alert(result.error);
+        toast.error(result.error);
       }
     });
   }

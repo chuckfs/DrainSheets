@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { deleteDocument } from "@/actions/documents";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 export function DeleteDocumentButton({
   documentId,
@@ -24,7 +25,7 @@ export function DeleteDocumentButton({
       if (result.success) {
         router.refresh();
       } else {
-        alert(result.error);
+        toast.error(result.error);
       }
     });
   }
