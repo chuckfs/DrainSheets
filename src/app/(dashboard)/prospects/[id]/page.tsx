@@ -2,12 +2,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProspect } from "@/actions/prospects";
 import { listContacts } from "@/actions/contacts";
+import { getDocumentsForProspect } from "@/actions/documents";
 import { ProspectContactsTable } from "@/components/contacts/prospect-contacts-table";
+import { ProspectDocumentsSection } from "@/components/documents/prospect-documents-section";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { requireProfile } from "@/lib/auth/guards";
 import { canDeleteContact, canEditContact } from "@/lib/permissions/contact";
+import { canUploadDocument } from "@/lib/permissions/document";
 
 export default async function ProspectDetailPage({
   params,
@@ -23,6 +26,7 @@ export default async function ProspectDetailPage({
   }
 
   const { contacts } = await listContacts({ prospectId: id, page: 1 });
+  const documents = await getDocumentsForProspect(id);
 
   return (
     <div className="space-y-6">
@@ -97,6 +101,14 @@ export default async function ProspectDetailPage({
           canDelete={canDeleteContact(profile)}
         />
       </div>
+
+      <ProspectDocumentsSection
+        propertyId={prospect.property_id}
+        prospectId={id}
+        documents={documents}
+        profile={profile}
+        canUpload={canUploadDocument(profile)}
+      />
     </div>
   );
 }

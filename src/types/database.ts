@@ -183,6 +183,7 @@ export type Database = {
           file_size: number | null
           id: string
           mime_type: string | null
+          org_id: string
           property_id: string
           prospect_id: string | null
           search_vector: unknown
@@ -195,6 +196,7 @@ export type Database = {
           file_size?: number | null
           id?: string
           mime_type?: string | null
+          org_id: string
           property_id: string
           prospect_id?: string | null
           search_vector?: unknown
@@ -207,12 +209,20 @@ export type Database = {
           file_size?: number | null
           id?: string
           mime_type?: string | null
+          org_id?: string
           property_id?: string
           prospect_id?: string | null
           search_vector?: unknown
           uploaded_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "documents_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "documents_property_id_fkey"
             columns: ["property_id"]

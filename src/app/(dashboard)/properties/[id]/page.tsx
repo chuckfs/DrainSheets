@@ -6,8 +6,10 @@ import {
 } from "@/actions/assignments";
 import { getProperty } from "@/actions/properties";
 import { listProspects } from "@/actions/prospects";
+import { getDocumentsForProperty } from "@/actions/documents";
 import { ArchivePropertyButton } from "@/components/properties/archive-property-button";
 import { PropertyAssignmentsPanel } from "@/components/properties/property-assignments-panel";
+import { PropertyDocumentsSection } from "@/components/documents/property-documents-section";
 import { ProspectsTable } from "@/components/prospects/prospects-table";
 import { requireProfile } from "@/lib/auth/guards";
 import {
@@ -15,6 +17,7 @@ import {
   canManageAssignments,
   propertyStatusLabel,
 } from "@/lib/permissions/property";
+import { canUploadDocument } from "@/lib/permissions/document";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -33,6 +36,7 @@ export default async function PropertyDetailPage({
   }
 
   const { prospects } = await listProspects({ propertyId: id, page: 1 });
+  const documents = await getDocumentsForProperty(id);
   const assignments = canManageAssignments(profile)
     ? await listPropertyAssignments(id)
     : [];
@@ -93,6 +97,14 @@ export default async function PropertyDetailPage({
         </div>
         <ProspectsTable prospects={prospects} />
       </div>
+
+      <PropertyDocumentsSection
+        propertyId={id}
+        documents={documents}
+        prospects={prospects}
+        profile={profile}
+        canUpload={canUploadDocument(profile) && property.status === "active"}
+      />
     </div>
   );
 }

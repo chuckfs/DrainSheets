@@ -2,7 +2,7 @@ export type ActionResult<T = void> =
   | { success: true; data?: T }
   | { success: false; error: string };
 
-export function actionError(message: string): ActionResult {
+export function actionError<T = void>(message: string): ActionResult<T> {
   return { success: false, error: message };
 }
 
