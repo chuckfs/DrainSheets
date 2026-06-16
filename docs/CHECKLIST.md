@@ -119,26 +119,26 @@
 ## Phase 5 — Property Management
 
 ### Property CRUD
-- [ ] Create property
-- [ ] Edit property
-- [ ] Archive property
-- [ ] View property details
+- [x] Create property
+- [x] Edit property
+- [x] Archive property
+- [x] View property details
 
 ### Property Table
-- [ ] Sort properties
-- [ ] Filter properties
-- [ ] Search properties
-- [ ] Pagination
+- [x] Sort properties
+- [x] Filter properties
+- [x] Search properties
+- [x] Pagination
 
 ### Prospect CRUD
-- [ ] Create prospect
-- [ ] Edit prospect
-- [ ] View prospect details
+- [x] Create prospect
+- [x] Edit prospect
+- [x] View prospect details
 
 ### Prospect Table
-- [ ] Sort prospects
-- [ ] Filter prospects
-- [ ] Search prospects
+- [x] Sort prospects
+- [x] Filter prospects
+- [x] Search prospects
 
 ---
 
