@@ -17,7 +17,7 @@ import {
 export function CompactActivityFeed({ activities }: { activities: ActivityWithProfile[] }) {
   return (
     <section>
-      <div className="border-x border-t bg-muted/40 px-2 py-1.5">
+      <div className="border-x border-t bg-muted/40 px-2 py-1">
         <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Recent activity
         </h2>
@@ -36,13 +36,16 @@ export function CompactActivityFeed({ activities }: { activities: ActivityWithPr
             {activities.map((activity) => (
               <SmartsheetGridRow key={activity.id}>
                 <SmartsheetGridCell>
-                  <p className="truncate text-[13px]">{formatActivityMessage(activity)}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {activity.profiles?.name ?? "Someone"} ·{" "}
-                    {formatActivityEntityLabel(activity.entity_type)}
+                  <p className="truncate text-[13px]">
+                    <span>{formatActivityMessage(activity)}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {" "}
+                      · {activity.profiles?.name ?? "Someone"} ·{" "}
+                      {formatActivityEntityLabel(activity.entity_type)}
+                    </span>
                   </p>
                 </SmartsheetGridCell>
-                <SmartsheetGridCell className="text-muted-foreground">
+                <SmartsheetGridCell className="text-xs text-muted-foreground">
                   {formatRelativeTime(activity.created_at)}
                 </SmartsheetGridCell>
               </SmartsheetGridRow>

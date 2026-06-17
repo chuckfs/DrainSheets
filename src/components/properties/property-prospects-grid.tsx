@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { MessageSquareIcon, PaperclipIcon, StoreIcon } from "lucide-react";
+import { MessageSquareIcon, PaperclipIcon } from "lucide-react";
 import type { ProspectWithProperty } from "@/actions/prospects";
 import type { PropertyProspectContact } from "@/actions/contacts";
 import type { ProspectIndicatorCounts } from "@/lib/prospects/indicators";
@@ -41,10 +41,10 @@ export function PropertyProspectsGrid({
 
   if (prospects.length === 0) {
     return (
-      <div className="p-4">
+      <div className="p-3">
         <SmartsheetGridEmpty message="No prospects on this sheet yet." />
         {canAddProspect && (
-          <div className="mt-3 text-center">
+          <div className="mt-2 text-center">
             <Link
               href={`/properties/${propertyId}/prospects/new`}
               className="text-sm text-link hover:underline"
@@ -62,8 +62,13 @@ export function PropertyProspectsGrid({
       <SmartsheetGridHeader>
         <SmartsheetGridRow className="hover:bg-transparent even:bg-transparent">
           <SmartsheetGridHead className="w-10 text-center">#</SmartsheetGridHead>
-          <SmartsheetGridHead className="w-14 text-center"> </SmartsheetGridHead>
-          <SmartsheetGridHead>Tenant / Company</SmartsheetGridHead>
+          <SmartsheetGridHead className="w-8 text-center" aria-label="Attachments">
+            📎
+          </SmartsheetGridHead>
+          <SmartsheetGridHead className="w-8 text-center" aria-label="Notes">
+            💬
+          </SmartsheetGridHead>
+          <SmartsheetGridHead>Company</SmartsheetGridHead>
           <SmartsheetGridHead className="hidden w-28 sm:table-cell">Use</SmartsheetGridHead>
           <SmartsheetGridHead className="hidden w-36 md:table-cell">Website</SmartsheetGridHead>
           <SmartsheetGridHead className="hidden w-36 lg:table-cell">Contact</SmartsheetGridHead>
@@ -78,6 +83,8 @@ export function PropertyProspectsGrid({
           const contact = contactByProspect.get(prospect.id);
           const commentsExpanded = expandedCommentsId === prospect.id;
           const hasComments = Boolean(prospect.comments?.trim());
+          const hasDocuments = (rowIndicators?.documentCount ?? 0) > 0;
+          const hasNotes = (rowIndicators?.noteCount ?? 0) > 0;
 
           return (
             <SmartsheetGridRow
@@ -90,21 +97,20 @@ export function PropertyProspectsGrid({
                 {index + 1}
               </SmartsheetGridCell>
               <SmartsheetGridCell className="text-center">
-                <div className="flex items-center justify-center gap-0.5">
-                  <StoreIcon className="size-3.5 text-sheet-icon" aria-hidden />
-                  {(rowIndicators?.documentCount ?? 0) > 0 && (
-                    <PaperclipIcon
-                      className="size-3 text-sheet-icon"
-                      aria-label={`${rowIndicators?.documentCount} documents`}
-                    />
-                  )}
-                  {(rowIndicators?.noteCount ?? 0) > 0 && (
-                    <MessageSquareIcon
-                      className="size-3 text-muted-foreground"
-                      aria-label={`${rowIndicators?.noteCount} notes`}
-                    />
-                  )}
-                </div>
+                {hasDocuments ? (
+                  <PaperclipIcon
+                    className="mx-auto size-3.5 text-sheet-icon"
+                    aria-label={`${rowIndicators?.documentCount} documents`}
+                  />
+                ) : null}
+              </SmartsheetGridCell>
+              <SmartsheetGridCell className="text-center">
+                {hasNotes ? (
+                  <MessageSquareIcon
+                    className="mx-auto size-3.5 text-muted-foreground"
+                    aria-label={`${rowIndicators?.noteCount} notes`}
+                  />
+                ) : null}
               </SmartsheetGridCell>
               <SmartsheetGridCell>
                 <Link
@@ -163,7 +169,7 @@ export function PropertyProspectsGrid({
                       setExpandedCommentsId(commentsExpanded ? null : prospect.id);
                     }}
                   >
-                    {commentsExpanded ? prospect.comments : prospect.comments}
+                    {prospect.comments}
                   </button>
                 ) : (
                   "—"

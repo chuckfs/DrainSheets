@@ -10,7 +10,7 @@ export function SiteHeader({ profile }: { profile: Profile }) {
   return (
     <header className="flex h-12 shrink-0 items-center gap-3 border-b px-3">
       <MobileNavSheet />
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 px-1">
         <GlobalSearch />
       </div>
       <div className="flex shrink-0 items-center gap-2">

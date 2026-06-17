@@ -38,7 +38,7 @@ export function SmartsheetGridHead({
   return (
     <TableHead
       className={cn(
-        "h-8 border-r border-grid-line px-2 py-0 text-xs font-medium uppercase tracking-wide text-muted-foreground last:border-r-0",
+        "h-8 border-r border-grid-line px-2 py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground last:border-r-0",
         className,
       )}
       {...props}
@@ -68,7 +68,7 @@ export function SmartsheetGridCell({
   return (
     <TableCell
       className={cn(
-        "border-r border-grid-line px-2 py-0.5 align-middle last:border-r-0",
+        "border-r border-grid-line px-2 py-1 align-middle text-[13px] last:border-r-0",
         className,
       )}
       {...props}

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState, useEffect } from "react";
-import { ChevronDownIcon, PlusIcon, Share2Icon } from "lucide-react";
+import { Share2Icon } from "lucide-react";
 import type { ActivityWithProfile } from "@/lib/activity/format";
 import type { DocumentWithRelations } from "@/actions/documents";
 import type { NoteWithAuthor } from "@/actions/notes";
@@ -17,6 +17,8 @@ import {
   SidePanelContent,
 } from "@/components/layout/attachments-panel";
 import { DetailLayout } from "@/components/layout/detail-layout";
+import { CreateMenu } from "@/components/layout/create-menu";
+import { MetadataPill } from "@/components/layout/metadata-pill";
 import { MobileUtilityBar } from "@/components/layout/mobile-utility-bar";
 import { ResponsivePanel } from "@/components/layout/responsive-panel";
 import { SheetHeader } from "@/components/layout/sheet-header";
@@ -30,14 +32,7 @@ import {
 } from "@/components/properties/property-detail-tabs";
 import { PropertyProspectsGrid } from "@/components/properties/property-prospects-grid";
 import { SharePropertyDialog } from "@/components/properties/share-property-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { NotesSection } from "@/components/notes/notes-section";
 import { useIsMobile } from "@/hooks/use-media-query";
 import type { ProspectIndicatorCounts } from "@/lib/prospects/indicators";
@@ -45,9 +40,11 @@ import { cn } from "@/lib/utils";
 import {
   canArchiveProperty,
   canEditProperty,
+  canEditProspect,
   canManageAssignments,
   propertyStatusLabel,
 } from "@/lib/permissions/property";
+import { canEditContact } from "@/lib/permissions/contact";
 import type { Profile, Property, UserRole } from "@/types/domain";
 
 type Editor = { id: string; name: string; email: string };
@@ -57,6 +54,13 @@ type Assignment = {
   profiles: { id: string; name: string; email: string } | null;
 };
 type OrgUser = { id: string; name: string; email: string; role: UserRole };
+
+export type PropertySheetMeta = {
+  prospectCount: number;
+  contactCount: number;
+  documentCount: number;
+  editorCount: number;
+};
 
 function parseTab(value: string | null): PropertyDetailTab {
   if (value === "details" || value === "activity") return value;
@@ -76,6 +80,7 @@ export function PropertyDetailView({
   editors,
   assignments,
   orgUsers,
+  meta,
 }: {
   property: Property;
   prospects: ProspectWithProperty[];
@@ -89,6 +94,7 @@ export function PropertyDetailView({
   editors: Editor[];
   assignments: Assignment[];
   orgUsers: OrgUser[];
+  meta: PropertySheetMeta;
 }) {
   const searchParams = useSearchParams();
   const tab = parseTab(searchParams.get("tab"));
@@ -317,44 +323,28 @@ export function PropertyDetailView({
             <SheetHeader
               title={property.name}
               subtitle={location || undefined}
+              meta={
+                <>
+                  <MetadataPill value={meta.prospectCount} label="Prospects" />
+                  <MetadataPill value={meta.contactCount} label="Contacts" />
+                  <MetadataPill value={meta.documentCount} label="Documents" />
+                  {canManage && (
+                    <MetadataPill value={meta.editorCount} label="Assigned Editors" />
+                  )}
+                </>
+              }
               actions={
                 <div className="flex max-w-full flex-wrap items-center justify-end gap-1.5">
-                  <Badge
-                    variant={property.status === "archived" ? "secondary" : "outline"}
-                    className="h-6 text-xs font-normal"
-                  >
-                    {propertyStatusLabel(property.status)}
-                  </Badge>
                   {canManage && isActive && (
                     <Button
                       type="button"
                       size="sm"
-                      className="btn-share gap-1.5"
+                      className="btn-share gap-1.5 px-3"
                       onClick={() => setShareOpen(true)}
                     >
                       <Share2Icon className="size-3.5" />
-                      <span className="hidden sm:inline">Share</span>
+                      Share
                     </Button>
-                  )}
-                  {isActive && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        className={cn(buttonVariants({ size: "sm", variant: "outline" }), "gap-1")}
-                      >
-                        <PlusIcon className="size-3.5" />
-                        <span className="hidden sm:inline">Create</span>
-                        <ChevronDownIcon className="size-3.5 opacity-60" />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {canEditProperty(profile) && (
-                          <DropdownMenuItem
-                            render={<Link href={`/properties/${property.id}/prospects/new`} />}
-                          >
-                            Add prospect
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
                   )}
                   {canEditProperty(profile) && (
                     <Link
@@ -363,6 +353,15 @@ export function PropertyDetailView({
                     >
                       Edit
                     </Link>
+                  )}
+                  {isActive && (
+                    <CreateMenu
+                      canCreateProspect={canEditProspect(profile)}
+                      canCreateContact={canEditContact(profile)}
+                      canUploadDocument={canUpload}
+                      propertyId={property.id}
+                      onUploadClick={() => setActivePanel("attachments")}
+                    />
                   )}
                   {canArchiveProperty(profile) && isActive && (
                     <ArchivePropertyButton propertyId={property.id} propertyName={property.name} />

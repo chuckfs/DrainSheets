@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { ChevronDownIcon, PlusIcon } from "lucide-react";
 import type { ActivityWithProfile } from "@/lib/activity/format";
 import type { ContactWithProspect } from "@/actions/contacts";
 import type { DocumentWithRelations } from "@/actions/documents";
@@ -17,6 +16,7 @@ import {
   SidePanelContent,
 } from "@/components/layout/attachments-panel";
 import { DetailLayout } from "@/components/layout/detail-layout";
+import { CreateMenu } from "@/components/layout/create-menu";
 import { MobileUtilityBar } from "@/components/layout/mobile-utility-bar";
 import { ResponsivePanel } from "@/components/layout/responsive-panel";
 import { SheetHeader } from "@/components/layout/sheet-header";
@@ -30,12 +30,6 @@ import {
 } from "@/components/prospects/prospect-detail-tabs";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useIsMobile } from "@/hooks/use-media-query";
 import { canDeleteContact, canEditContact } from "@/lib/permissions/contact";
 import { cn } from "@/lib/utils";
@@ -330,24 +324,13 @@ export function ProspectDetailView({
                       {prospect.status}
                     </Badge>
                   )}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      className={cn(buttonVariants({ size: "sm", variant: "outline" }), "gap-1")}
-                    >
-                      <PlusIcon className="size-3.5" />
-                      <span className="hidden sm:inline">Create</span>
-                      <ChevronDownIcon className="size-3.5 opacity-60" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {canEdit && (
-                        <DropdownMenuItem
-                          render={<Link href={`/prospects/${prospect.id}/contacts/new`} />}
-                        >
-                          Add contact
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <CreateMenu
+                    canCreateContact={canEdit}
+                    canUploadDocument={canUpload}
+                    propertyId={propertyId}
+                    prospectId={prospect.id}
+                    onUploadClick={() => setActivePanel("attachments")}
+                  />
                   {canEdit && (
                     <Link
                       href={`/prospects/${prospect.id}/edit`}

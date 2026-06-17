@@ -21,7 +21,7 @@ export function DashboardPropertiesTable({
 }) {
   return (
     <section className="min-w-0 flex-1">
-      <div className="flex items-center justify-between border-x border-t bg-muted/40 px-2 py-1.5">
+      <div className="flex items-center justify-between border-x border-t bg-muted/40 px-2 py-1">
         <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {title}
         </h2>

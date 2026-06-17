@@ -15,29 +15,34 @@ const statItems: Array<{
 
 export function KpiStrip({ stats }: { stats: DashboardStats }) {
   return (
-    <div className="flex flex-wrap items-stretch divide-x border-b bg-muted/20">
-      {statItems.map((item) => {
-        const content = (
-          <>
-            <span className="text-xs font-medium text-muted-foreground">{item.label}</span>
-            <span className="text-xl font-semibold tabular-nums">{stats[item.key]}</span>
-          </>
-        );
+    <div className="flex min-h-10 flex-wrap items-center gap-x-1 border-b px-3 py-2">
+      <div className="inline-flex flex-wrap items-center rounded-md border bg-muted/20 px-3 py-1.5 text-sm">
+        {statItems.map((item, index) => {
+          const segment = (
+            <>
+              <span className="text-muted-foreground">{item.label}</span>{" "}
+              <span className="font-semibold tabular-nums text-foreground">{stats[item.key]}</span>
+            </>
+          );
 
-        return item.href ? (
-          <Link
-            key={item.key}
-            href={item.href}
-            className="flex min-w-[100px] flex-1 flex-col px-3 py-2 transition-colors hover:bg-muted/40"
-          >
-            {content}
-          </Link>
-        ) : (
-          <div key={item.key} className="flex min-w-[100px] flex-1 flex-col px-3 py-2">
-            {content}
-          </div>
-        );
-      })}
+          return (
+            <span key={item.key} className="inline-flex items-center">
+              {index > 0 && (
+                <span className="mx-2 text-muted-foreground/60" aria-hidden>
+                  ·
+                </span>
+              )}
+              {item.href ? (
+                <Link href={item.href} className="transition-colors hover:text-link">
+                  {segment}
+                </Link>
+              ) : (
+                segment
+              )}
+            </span>
+          );
+        })}
+      </div>
     </div>
   );
 }

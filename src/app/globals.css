@@ -169,6 +169,6 @@
     border-color: var(--grid-line);
   }
   .btn-share {
-    @apply bg-share text-white hover:bg-share/90;
+    @apply bg-share font-medium text-white shadow-sm hover:bg-share/90;
   }
 }

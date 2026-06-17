@@ -69,6 +69,12 @@ export default async function PropertyDetailPage({
         editors={editors}
         assignments={assignments}
         orgUsers={orgUsers}
+        meta={{
+          prospectCount: prospects.length,
+          contactCount: contactLabels.length,
+          documentCount: documents.length,
+          editorCount: assignments.length,
+        }}
       />
     </Suspense>
   );

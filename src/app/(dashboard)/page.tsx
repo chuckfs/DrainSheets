@@ -1,17 +1,19 @@
-import Link from "next/link";
-import { PlusIcon } from "lucide-react";
 import { getRecentActivity } from "@/actions/activity";
 import { getDashboardData } from "@/actions/dashboard";
 import { CompactActivityFeed } from "@/components/dashboard/compact-activity-feed";
 import { DashboardPropertiesTable } from "@/components/dashboard/dashboard-properties-table";
 import { DashboardProspectsTable } from "@/components/dashboard/dashboard-prospects-table";
 import { KpiStrip } from "@/components/dashboard/kpi-strip";
+import { CreateMenu } from "@/components/layout/create-menu";
 import { SheetHeader } from "@/components/layout/sheet-header";
 import { ListPageShell } from "@/components/layout/list-page-shell";
 import { requireProfile } from "@/lib/auth/guards";
-import { canCreateProperty } from "@/lib/permissions/property";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { canEditContact } from "@/lib/permissions/contact";
+import { canUploadDocument } from "@/lib/permissions/document";
+import {
+  canCreateProperty,
+  canEditProspect,
+} from "@/lib/permissions/property";
 
 function dashboardSubtitle(): string {
   return new Date().toLocaleDateString(undefined, {
@@ -33,25 +35,22 @@ export default async function DashboardPage() {
           title="Home"
           subtitle={dashboardSubtitle()}
           actions={
-            canCreateProperty(profile) ? (
-              <Link
-                href="/properties/new"
-                className={cn(buttonVariants({ size: "sm" }), "btn-share gap-1.5")}
-              >
-                <PlusIcon className="size-3.5" />
-                Create
-              </Link>
-            ) : undefined
+            <CreateMenu
+              canCreateProperty={canCreateProperty(profile)}
+              canCreateProspect={canEditProspect(profile)}
+              canCreateContact={canEditContact(profile)}
+              canUploadDocument={canUploadDocument(profile)}
+            />
           }
         />
       }
       toolbar={<KpiStrip stats={stats} />}
     >
-      <div className="flex flex-col gap-4 lg:flex-row">
+      <div className="flex flex-col gap-2 lg:flex-row">
         <DashboardPropertiesTable title={assignedTitle} properties={assignedProperties} />
         <DashboardProspectsTable prospects={recentProspects} />
       </div>
-      <div className="mt-4">
+      <div className="mt-2">
         <CompactActivityFeed activities={activities} />
       </div>
     </ListPageShell>
