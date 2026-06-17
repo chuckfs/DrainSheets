@@ -1,9 +1,5 @@
-import { getRecentActivity } from "@/actions/activity";
-import { getDashboardData } from "@/actions/dashboard";
-import { CompactActivityFeed } from "@/components/dashboard/compact-activity-feed";
-import { DashboardPropertiesTable } from "@/components/dashboard/dashboard-properties-table";
-import { DashboardProspectsTable } from "@/components/dashboard/dashboard-prospects-table";
-import { KpiStrip } from "@/components/dashboard/kpi-strip";
+import { getAssignedProperties } from "@/actions/dashboard";
+import { RecentsPageContent } from "@/components/recents/recents-page-content";
 import { CreateMenu } from "@/components/layout/create-menu";
 import { SheetHeader } from "@/components/layout/sheet-header";
 import { ListPageShell } from "@/components/layout/list-page-shell";
@@ -14,26 +10,40 @@ import {
   canCreateProperty,
   canEditProspect,
 } from "@/lib/permissions/property";
+import type { Property } from "@/types/domain";
 
-function dashboardSubtitle(): string {
-  return new Date().toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
+function toProperty(entry: Awaited<ReturnType<typeof getAssignedProperties>>[number]): Property {
+  return {
+    id: entry.id,
+    name: entry.name,
+    address: null,
+    city: entry.city,
+    state: entry.state,
+    description: null,
+    status: "active",
+    created_at: entry.updated_at,
+    updated_at: entry.updated_at,
+    org_id: "",
+    search_vector: null,
+    created_by: null,
+  };
 }
 
-export default async function DashboardPage() {
+export default async function RecentsPage() {
   const profile = await requireProfile();
-  const [{ stats, assignedProperties, recentProspects, assignedTitle }, activities] =
-    await Promise.all([getDashboardData(profile), getRecentActivity()]);
+  const assignedProperties = await getAssignedProperties();
+  const isEditor = profile.role === "editor";
 
   return (
     <ListPageShell
       header={
         <SheetHeader
-          title="Home"
-          subtitle={dashboardSubtitle()}
+          title="Recents"
+          subtitle={
+            isEditor
+              ? "Showing properties assigned to you"
+              : "Recently opened property sheets"
+          }
           actions={
             <CreateMenu
               canCreateProperty={canCreateProperty(profile)}
@@ -44,15 +54,8 @@ export default async function DashboardPage() {
           }
         />
       }
-      toolbar={<KpiStrip stats={stats} />}
     >
-      <div className="flex flex-col gap-2 lg:flex-row">
-        <DashboardPropertiesTable title={assignedTitle} properties={assignedProperties} />
-        <DashboardProspectsTable prospects={recentProspects} />
-      </div>
-      <div className="mt-2">
-        <CompactActivityFeed activities={activities} />
-      </div>
+      <RecentsPageContent properties={assignedProperties.map(toProperty)} />
     </ListPageShell>
   );
 }

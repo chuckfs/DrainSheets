@@ -1,14 +1,15 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { Share2Icon } from "lucide-react";
 import type { ActivityWithProfile } from "@/lib/activity/format";
+import { filterActivitiesForProspect } from "@/lib/activity/filter-by-prospect";
 import type { DocumentWithRelations } from "@/actions/documents";
 import type { NoteWithAuthor } from "@/actions/notes";
 import type { ProspectWithProperty } from "@/actions/prospects";
 import type { PropertyProspectContact } from "@/actions/contacts";
-import { CompactActivityFeed } from "@/components/dashboard/compact-activity-feed";
+import { ActivityTimeline } from "@/components/dashboard/activity-timeline";
 import {
   AttachmentsPanel,
   AttachmentsPanelContent,
@@ -23,18 +24,28 @@ import { ResponsivePanel } from "@/components/layout/responsive-panel";
 import { SheetHeader } from "@/components/layout/sheet-header";
 import { UtilityRail } from "@/components/layout/utility-rail";
 import { ManageAccessDialog } from "@/components/properties/manage-access-dialog";
+import {
+  focusProspectSearchFromToolbar,
+  PropertyProspectsGridWithToolbar,
+} from "@/components/properties/property-prospects-grid-with-toolbar";
 import { PropertyOverflowMenu } from "@/components/properties/property-overflow-menu";
 import {
   PropertyBreadcrumb,
   PropertyDetailTabs,
   type PropertyDetailTab,
 } from "@/components/properties/property-detail-tabs";
-import { PropertyProspectsGrid } from "@/components/properties/property-prospects-grid";
+import { ProspectWorkspaceSheet } from "@/components/properties/prospect-workspace-sheet";
+import {
+  focusGlobalSearchInput,
+  MobileProspectActionBar,
+} from "@/components/properties/mobile-prospect-action-bar";
+import { RecentPropertyTracker } from "@/components/recents/recent-property-tracker";
 import { SharePropertyDialog } from "@/components/properties/share-property-dialog";
 import { SharedWithSummary } from "@/components/properties/shared-with-summary";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-media-query";
 import { useWorkspacePanel } from "@/hooks/use-workspace-panel";
+import { useWorkspaceShortcuts } from "@/hooks/use-workspace-shortcuts";
 import type { ProspectIndicatorCounts } from "@/lib/prospects/indicators";
 import {
   canArchiveProperty,
@@ -101,9 +112,11 @@ export function PropertyDetailView({
 
   const { activePanel, setActivePanel, togglePanel, closePanel } = useWorkspacePanel();
   const [selectedProspectId, setSelectedProspectId] = useState<string | null>(null);
+  const [workspaceProspectId, setWorkspaceProspectId] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
   const [uploadRequest, setUploadRequest] = useState(0);
+  const [noteRequest, setNoteRequest] = useState(0);
 
   const canManage = canManageAssignments(profile);
   const isActive = property.status === "active";
@@ -116,18 +129,64 @@ export function PropertyDetailView({
     [prospects, selectedProspectId],
   );
 
-  const selectedRowLabel = useMemo(() => {
-    if (!selectedProspect) return null;
-    const index = prospects.findIndex((prospect) => prospect.id === selectedProspectId);
-    if (index < 0) return null;
-    return `Row ${index + 1}: ${selectedProspect.company_name}`;
-  }, [prospects, selectedProspect, selectedProspectId]);
+  const workspaceProspect = useMemo(
+    () => prospects.find((prospect) => prospect.id === workspaceProspectId) ?? null,
+    [prospects, workspaceProspectId],
+  );
+
+  const filteredActivities = useMemo(() => {
+    if (!selectedProspectId) return activities;
+    return filterActivitiesForProspect(activities, selectedProspectId);
+  }, [activities, selectedProspectId]);
+
+  const activityTitle = selectedProspect
+    ? `Activity for ${selectedProspect.company_name}`
+    : "Property Activity";
 
   useEffect(() => {
-    if (selectedProspectId) {
+    if (selectedProspectId && !isMobile) {
       setActivePanel("attachments");
     }
-  }, [selectedProspectId, setActivePanel]);
+  }, [selectedProspectId, isMobile, setActivePanel]);
+
+  const handleSelectProspect = useCallback(
+    (prospectId: string | null) => {
+      setSelectedProspectId(prospectId);
+      if (isMobile && prospectId) {
+        setWorkspaceProspectId(prospectId);
+      }
+    },
+    [isMobile],
+  );
+
+  const handleOpenProspect = useCallback(
+    (prospectId: string) => {
+      setSelectedProspectId(prospectId);
+      setWorkspaceProspectId(prospectId);
+    },
+    [],
+  );
+
+  const openUploadFlow = useCallback(() => {
+    setActivePanel("attachments");
+    setUploadRequest((current) => current + 1);
+  }, [setActivePanel]);
+
+  const openNoteFlow = useCallback(() => {
+    setActivePanel("attachments");
+    setNoteRequest((current) => current + 1);
+  }, [setActivePanel]);
+
+  useWorkspaceShortcuts({
+    onFocusSearch: focusProspectSearchFromToolbar,
+    onClosePanel: () => {
+      closePanel();
+      setWorkspaceProspectId(null);
+    },
+    onGlobalSearch: focusGlobalSearchInput,
+    onAddNote: selectedProspectId ? openNoteFlow : undefined,
+    onUpload: selectedProspectId && canUpload && isActive ? openUploadFlow : undefined,
+  });
 
   const attachmentProps = {
     propertyId: property.id,
@@ -138,11 +197,26 @@ export function PropertyDetailView({
     canUpload: canUpload && isActive,
     selectedProspectId,
     selectedProspectName: selectedProspect?.company_name ?? null,
-    selectedRowLabel,
+    selectedProspectCategory: selectedProspect?.category ?? null,
     onClose: closePanel,
     variant: "property" as const,
     uploadRequest,
+    noteRequest,
   };
+
+  function renderActivityPanel() {
+    return (
+      <ActivityTimeline
+        activities={filteredActivities}
+        title={activityTitle}
+        emptyMessage={
+          selectedProspectId
+            ? "No activity for this prospect yet."
+            : "No recent activity yet."
+        }
+      />
+    );
+  }
 
   function renderPanelContent() {
     if (!activePanel) return null;
@@ -153,8 +227,8 @@ export function PropertyDetailView({
 
     if (activePanel === "activity") {
       return (
-        <SidePanelContent title="Activity" onClose={closePanel} bodyClassName="p-0">
-          <CompactActivityFeed activities={activities} />
+        <SidePanelContent title={activityTitle} onClose={closePanel} bodyClassName="flex min-h-0 flex-col p-0">
+          {renderActivityPanel()}
         </SidePanelContent>
       );
     }
@@ -206,8 +280,8 @@ export function PropertyDetailView({
 
     if (activePanel === "activity") {
       return (
-        <SidePanel title="Activity" onClose={closePanel} bodyClassName="p-0">
-          <CompactActivityFeed activities={activities} />
+        <SidePanel title={activityTitle} onClose={closePanel} bodyClassName="flex min-h-0 flex-col p-0">
+          {renderActivityPanel()}
         </SidePanel>
       );
     }
@@ -277,31 +351,30 @@ export function PropertyDetailView({
     }
 
     return (
-      <PropertyProspectsGrid
+      <PropertyProspectsGridWithToolbar
         prospects={prospects}
         contactLabels={contactLabels}
         indicators={indicators}
         selectedProspectId={selectedProspectId}
-        onSelectProspect={setSelectedProspectId}
+        onSelectProspect={handleSelectProspect}
+        onOpenProspect={handleOpenProspect}
         canAddProspect={canEdit && isActive}
         propertyId={property.id}
       />
     );
   }
 
-  function openUploadFlow() {
-    setActivePanel("attachments");
-    setUploadRequest((current) => current + 1);
-  }
-
   return (
     <>
+      <RecentPropertyTracker propertyId={property.id} propertyName={property.name} />
       <DetailLayout
         mobileToolbar
+        className={isMobile && selectedProspectId ? "pb-28 md:pb-0" : undefined}
         main={
           <>
             <PropertyBreadcrumb propertyName={property.name} />
             <SheetHeader
+              eyebrow="Property Workspace"
               title={property.name}
               subtitle={location || undefined}
               meta={
@@ -367,6 +440,28 @@ export function PropertyDetailView({
         </ResponsivePanel>
       )}
 
+      <MobileProspectActionBar
+        visible={isMobile && Boolean(selectedProspectId)}
+        onAttach={openUploadFlow}
+        onNote={openNoteFlow}
+        onActivity={() => setActivePanel("activity")}
+      />
+
+      <ProspectWorkspaceSheet
+        prospect={workspaceProspect}
+        propertyId={property.id}
+        documents={documents}
+        notes={notes}
+        profile={profile}
+        canUpload={canUpload && isActive}
+        open={workspaceProspectId !== null}
+        onOpenChange={(open) => {
+          if (!open) setWorkspaceProspectId(null);
+        }}
+        onAttachClick={openUploadFlow}
+        fullScreen={isMobile}
+      />
+
       {canManage && (
         <>
           <SharePropertyDialog
@@ -374,6 +469,7 @@ export function PropertyDetailView({
             propertyName={property.name}
             editors={editors}
             assignments={assignments}
+            orgUsers={orgUsers}
             open={shareOpen}
             onOpenChange={setShareOpen}
             onManageAccess={() => {

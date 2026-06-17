@@ -78,6 +78,7 @@ export function ProspectDetailView({
     canUpload,
     selectedProspectId: prospect.id,
     selectedProspectName: prospect.company_name,
+    selectedProspectCategory: prospect.category,
     selectedRowLabel: prospect.company_name,
     onClose: closePanel,
     variant: "prospect" as const,
@@ -281,6 +282,7 @@ export function ProspectDetailView({
               prospectName={prospect.company_name}
             />
             <SheetHeader
+              eyebrow="Row Workspace"
               title={prospect.company_name}
               subtitle={propertyName}
               actions={

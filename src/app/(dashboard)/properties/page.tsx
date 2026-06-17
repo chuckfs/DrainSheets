@@ -5,6 +5,7 @@ import { PropertiesGridToolbar } from "@/components/properties/properties-grid-t
 import { CreateMenu } from "@/components/layout/create-menu";
 import { SheetHeader } from "@/components/layout/sheet-header";
 import { ListPageShell } from "@/components/layout/list-page-shell";
+import { SmartsheetGridEmpty } from "@/components/data/smartsheet-grid";
 import { requireProfile } from "@/lib/auth/guards";
 import { canEditContact } from "@/lib/permissions/contact";
 import { canUploadDocument } from "@/lib/permissions/document";
@@ -27,6 +28,7 @@ export default async function PropertiesPage({
 }) {
   const profile = await requireProfile();
   const params = await searchParams;
+  const isEditor = profile.role === "editor";
 
   const status = (params.status as PropertyStatus | "all") || "active";
   const sort = (params.sort as "name" | "created_at" | "city") || "name";
@@ -39,12 +41,16 @@ export default async function PropertiesPage({
     page,
   });
 
+  const subtitle = isEditor
+    ? "Showing properties assigned to you"
+    : `${total} ${status === "all" ? "total" : status}`;
+
   return (
     <ListPageShell
       header={
         <SheetHeader
           title="Properties"
-          subtitle={`${total} ${status === "all" ? "total" : status}`}
+          subtitle={subtitle}
           actions={
             <CreateMenu
               canCreateProperty={canCreateProperty(profile)}
@@ -61,7 +67,11 @@ export default async function PropertiesPage({
         </Suspense>
       }
     >
-      <PropertiesTable properties={properties} canEdit={canEditProperty(profile)} />
+      {properties.length === 0 && isEditor ? (
+        <SmartsheetGridEmpty message="No properties assigned yet. Contact an administrator to gain access." />
+      ) : (
+        <PropertiesTable properties={properties} canEdit={canEditProperty(profile)} />
+      )}
     </ListPageShell>
   );
 }

@@ -6,8 +6,9 @@ import { useEffect, useState } from "react";
 import { MoreHorizontalIcon, StarIcon } from "lucide-react";
 import type { Property } from "@/types/domain";
 import { propertyStatusLabel } from "@/lib/permissions/property";
-import { formatRelativeTime } from "@/lib/format-relative-time";
+import { formatRelativeTime, formatRecentOpened } from "@/lib/format-relative-time";
 import { getFavoritePropertyIds, toggleFavoritePropertyId } from "@/lib/favorites";
+import { getRecentPropertyViewedAt, recordRecentProperty } from "@/lib/recent-properties";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -35,14 +36,20 @@ export function PropertiesTable({
 }) {
   const router = useRouter();
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [recentViewedAt, setRecentViewedAt] = useState<Record<string, string | null>>({});
 
   useEffect(() => {
     setFavorites(getFavoritePropertyIds());
-  }, []);
+    const viewed: Record<string, string | null> = {};
+    for (const property of properties) {
+      viewed[property.id] = getRecentPropertyViewedAt(property.id);
+    }
+    setRecentViewedAt(viewed);
+  }, [properties]);
 
-  function handleToggleFavorite(event: React.MouseEvent, propertyId: string) {
+  function handleToggleFavorite(event: React.MouseEvent, propertyId: string, propertyName: string) {
     event.stopPropagation();
-    setFavorites(toggleFavoritePropertyId(propertyId));
+    setFavorites(toggleFavoritePropertyId(propertyId, propertyName));
   }
 
   if (properties.length === 0) {
@@ -64,6 +71,7 @@ export function PropertiesTable({
           <SmartsheetGridHead>Name</SmartsheetGridHead>
           <SmartsheetGridHead>Location</SmartsheetGridHead>
           <SmartsheetGridHead className="w-24">Status</SmartsheetGridHead>
+          <SmartsheetGridHead className="w-32">Last Opened</SmartsheetGridHead>
           <SmartsheetGridHead className="w-28">Updated</SmartsheetGridHead>
           <SmartsheetGridHead className="w-12 text-center"> </SmartsheetGridHead>
         </SmartsheetGridRow>
@@ -76,14 +84,17 @@ export function PropertiesTable({
             <SmartsheetGridRow
               key={property.id}
               className="cursor-pointer"
-              onClick={() => router.push(`/properties/${property.id}`)}
+              onClick={() => {
+                recordRecentProperty({ id: property.id, name: property.name });
+                router.push(`/properties/${property.id}`);
+              }}
             >
               <SmartsheetGridCell className="text-center">
                 <button
                   type="button"
                   className="inline-flex size-6 items-center justify-center rounded-sm hover:bg-muted"
                   aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
-                  onClick={(event) => handleToggleFavorite(event, property.id)}
+                  onClick={(event) => handleToggleFavorite(event, property.id, property.name)}
                 >
                   <StarIcon
                     className={cn(
@@ -114,6 +125,11 @@ export function PropertiesTable({
                 >
                   {propertyStatusLabel(property.status)}
                 </span>
+              </SmartsheetGridCell>
+              <SmartsheetGridCell className="text-muted-foreground">
+                {recentViewedAt[property.id]
+                  ? formatRecentOpened(recentViewedAt[property.id]!)
+                  : "—"}
               </SmartsheetGridCell>
               <SmartsheetGridCell className="text-muted-foreground">
                 {formatRelativeTime(property.updated_at ?? property.created_at)}

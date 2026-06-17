@@ -16,6 +16,7 @@ import { requireProfile } from "@/lib/auth/guards";
 import { canManageAssignments } from "@/lib/permissions/property";
 import { canUploadDocument } from "@/lib/permissions/document";
 import { buildProspectIndicators } from "@/lib/prospects/indicators";
+import { GridSkeletonRows } from "@/components/data/grid-pinned-columns";
 
 export default async function PropertyDetailPage({
   params,
@@ -55,7 +56,13 @@ export default async function PropertyDetailPage({
   const indicators = buildProspectIndicators(documents, notes);
 
   return (
-    <Suspense fallback={<div className="-m-3 min-h-[calc(100vh-3rem)] animate-pulse bg-muted/20" />}>
+    <Suspense
+      fallback={
+        <div className="-m-3 min-h-[calc(100vh-3rem)]">
+          <GridSkeletonRows rows={15} cols={8} />
+        </div>
+      }
+    >
       <PropertyDetailView
         property={property}
         prospects={prospects}

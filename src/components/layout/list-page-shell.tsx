@@ -6,7 +6,7 @@ export function ListPageShell({
   children,
 }: {
   header: ReactNode;
-  toolbar: ReactNode;
+  toolbar?: ReactNode;
   children: ReactNode;
 }) {
   return (

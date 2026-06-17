@@ -20,6 +20,7 @@ type ListGridToolbarProps = {
   sortOptions: SortOption[];
   defaultSort: string;
   filters?: ReactNode;
+  onSortChange?: (value: string) => void;
 };
 
 export function ListGridToolbar({
@@ -30,6 +31,7 @@ export function ListGridToolbar({
   sortOptions,
   defaultSort,
   filters,
+  onSortChange,
 }: ListGridToolbarProps) {
   const { searchParams, updateParams } = useListSearchParams();
 
@@ -47,7 +49,13 @@ export function ListGridToolbar({
             aria-label="Sort by"
             defaultValue={searchParams.get("sort") ?? defaultSort}
             className={compactSelectClassName}
-            onChange={(e) => updateParams({ sort: e.target.value, page: null })}
+            onChange={(e) => {
+              if (onSortChange) {
+                onSortChange(e.target.value);
+              } else {
+                updateParams({ sort: e.target.value, page: null });
+              }
+            }}
           >
             {sortOptions.map((option) => (
               <option key={option.value} value={option.value}>

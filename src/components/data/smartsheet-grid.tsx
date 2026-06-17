@@ -18,7 +18,7 @@ export function SmartsheetGrid({
 }) {
   return (
     <div className={cn("overflow-auto border-x border-b", className)}>
-      <Table className="grid-table border-collapse text-[13px]">{children}</Table>
+      <Table className="grid-table min-w-[880px] border-collapse text-[13px]">{children}</Table>
     </div>
   );
 }
@@ -53,7 +53,7 @@ export function SmartsheetGridRow({
   return (
     <TableRow
       className={cn(
-        "h-8 border-grid-line hover:bg-row-hover even:bg-muted/15 data-[state=selected]:bg-row-selected",
+        "h-8 min-h-8 border-grid-line hover:bg-row-hover even:bg-muted/15 data-[state=selected]:bg-row-selected",
         className,
       )}
       {...props}

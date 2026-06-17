@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { assignEditor } from "@/actions/assignments";
+import { Combobox } from "@/components/ui/combobox";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,8 +12,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { toast } from "sonner";
+import type { UserRole } from "@/types/domain";
 
 type Editor = { id: string; name: string; email: string };
 type Assignment = {
@@ -20,12 +22,61 @@ type Assignment = {
   user_id: string;
   profiles: { id: string; name: string; email: string } | null;
 };
+type OrgUser = { id: string; name: string; email: string; role: UserRole };
+
+function roleLabel(role: UserRole): string {
+  return role.charAt(0).toUpperCase() + role.slice(1);
+}
+
+function SharedWithList({
+  orgUsers,
+  assignments,
+}: {
+  orgUsers: OrgUser[];
+  assignments: Assignment[];
+}) {
+  const adminsAndOwners = orgUsers.filter((user) => user.role === "owner" || user.role === "admin");
+  const hasEntries = adminsAndOwners.length > 0 || assignments.length > 0;
+
+  if (!hasEntries) {
+    return <p className="text-sm text-muted-foreground">Only you have access.</p>;
+  }
+
+  return (
+    <section className="space-y-2">
+      <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        Shared with
+      </h3>
+      <ul className="space-y-1.5">
+        {adminsAndOwners.map((user) => (
+          <li key={user.id} className="flex items-center gap-2 text-sm">
+            <UserAvatar name={user.name} />
+            <span className="min-w-0 truncate">
+              {user.name}{" "}
+              <span className="text-muted-foreground">({roleLabel(user.role)})</span>
+            </span>
+          </li>
+        ))}
+        {assignments.map((assignment) => (
+          <li key={assignment.id} className="flex items-center gap-2 text-sm">
+            <UserAvatar name={assignment.profiles?.name ?? "?"} />
+            <span className="min-w-0 truncate">
+              {assignment.profiles?.name ?? "Unknown"}{" "}
+              <span className="text-muted-foreground">(Editor)</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 export function SharePropertyDialog({
   propertyId,
   propertyName,
   editors,
   assignments,
+  orgUsers,
   open,
   onOpenChange,
   onManageAccess,
@@ -34,6 +85,7 @@ export function SharePropertyDialog({
   propertyName: string;
   editors: Editor[];
   assignments: Assignment[];
+  orgUsers: OrgUser[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onManageAccess: () => void;
@@ -66,41 +118,25 @@ export function SharePropertyDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {assignments.length > 0 && (
-          <ul className="max-h-40 space-y-1 overflow-auto rounded-md border p-2 text-sm">
-            {assignments.map((assignment) => (
-              <li key={assignment.id} className="truncate">
-                {assignment.profiles?.name ?? "Unknown"}{" "}
-                <span className="text-muted-foreground">({assignment.profiles?.email})</span>
-              </li>
-            ))}
-          </ul>
-        )}
+        <SharedWithList orgUsers={orgUsers} assignments={assignments} />
 
         {availableEditors.length > 0 ? (
           <div className="space-y-2">
-            <Label htmlFor="share-editor">Add editor</Label>
-            <select
-              id="share-editor"
-              className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm"
-              defaultValue=""
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Add editor
+            </p>
+            <Combobox
+              options={availableEditors.map((editor) => ({
+                value: editor.id,
+                label: editor.name,
+                description: editor.email,
+              }))}
+              placeholder="Select editor…"
+              searchPlaceholder="Search users…"
+              emptyMessage="No editors found."
               disabled={pending}
-              onChange={(e) => {
-                if (e.target.value) {
-                  handleAssign(e.target.value);
-                  e.target.value = "";
-                }
-              }}
-            >
-              <option value="" disabled>
-                Select editor…
-              </option>
-              {availableEditors.map((editor) => (
-                <option key={editor.id} value={editor.id}>
-                  {editor.name}
-                </option>
-              ))}
-            </select>
+              onSelect={handleAssign}
+            />
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">All editors already have access.</p>

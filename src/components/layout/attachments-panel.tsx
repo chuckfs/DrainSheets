@@ -5,9 +5,10 @@ import type { DocumentWithRelations } from "@/actions/documents";
 import type { NoteWithAuthor } from "@/actions/notes";
 import type { ProspectWithProperty } from "@/actions/prospects";
 import { DocumentUploadForm } from "@/components/documents/document-upload-form";
-import { DocumentsTable } from "@/components/documents/documents-table";
-import { NoteForm } from "@/components/notes/note-form";
-import { NotesList } from "@/components/notes/notes-list";
+import { CompactDocumentsList } from "@/components/documents/compact-documents-list";
+import { CompactNotesList } from "@/components/notes/compact-notes-list";
+import { QuickNoteForm } from "@/components/notes/quick-note-form";
+import { RowContextHeader } from "@/components/properties/row-context-header";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -56,10 +57,11 @@ export function AttachmentsPanelContent({
   canUpload,
   selectedProspectId,
   selectedProspectName,
-  selectedRowLabel,
+  selectedProspectCategory,
   onClose,
   variant = "property",
   uploadRequest = 0,
+  noteRequest = 0,
 }: {
   propertyId: string;
   documents: DocumentWithRelations[];
@@ -69,15 +71,16 @@ export function AttachmentsPanelContent({
   canUpload: boolean;
   selectedProspectId: string | null;
   selectedProspectName?: string | null;
+  selectedProspectCategory?: string | null;
   selectedRowLabel?: string | null;
   onClose: () => void;
   variant?: "property" | "prospect";
   uploadRequest?: number;
+  noteRequest?: number;
 }) {
   const isProspectVariant = variant === "prospect";
   const [scope, setScope] = useState<ScopeTab>(isProspectVariant ? "row" : "all");
   const [showUpload, setShowUpload] = useState(false);
-  const [showNoteForm, setShowNoteForm] = useState(false);
   const canCreate = canCreateNote(profile);
 
   const resolvedProspectName = useMemo(() => {
@@ -122,22 +125,30 @@ export function AttachmentsPanelContent({
   function openAttachToRow() {
     setScope("row");
     setShowUpload(true);
-    setShowNoteForm(false);
   }
+
+  const showRowContext =
+    (isProspectVariant || (selectedProspectId && scope === "row")) && resolvedProspectName;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex items-center justify-between border-b px-3 py-2">
         <div className="min-w-0">
           <h2 className="text-sm font-medium">Attachments</h2>
-          {selectedRowLabel && (isProspectVariant || scope === "row") && (
-            <p className="truncate text-xs text-muted-foreground">{selectedRowLabel}</p>
-          )}
         </div>
         <Button type="button" variant="ghost" size="icon-sm" onClick={onClose}>
           ×
         </Button>
       </div>
+
+      {showRowContext && (
+        <RowContextHeader
+          companyName={resolvedProspectName!}
+          category={selectedProspectCategory ?? prospects.find((p) => p.id === selectedProspectId)?.category}
+          documentCount={scopedDocuments.length}
+          noteCount={scopedNotes.length}
+        />
+      )}
 
       {!isProspectVariant && selectedProspectId && resolvedProspectName && canUpload && (
         <div className="border-b px-2 py-2">
@@ -209,17 +220,6 @@ export function AttachmentsPanelContent({
               {showUpload ? "Cancel upload" : "Upload"}
             </Button>
           )}
-          {canCreate && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-7 text-xs"
-              onClick={() => setShowNoteForm((value) => !value)}
-            >
-              {showNoteForm ? "Cancel note" : "Add note"}
-            </Button>
-          )}
         </div>
 
         {canUpload && showUpload && (
@@ -229,16 +229,6 @@ export function AttachmentsPanelContent({
               prospectId={uploadProspectId}
               prospects={prospects}
               onSuccess={() => setShowUpload(false)}
-            />
-          </div>
-        )}
-
-        {canCreate && showNoteForm && (
-          <div className="border-b p-2">
-            <NoteForm
-              propertyId={propertyId}
-              prospectId={uploadProspectId}
-              onSuccess={() => setShowNoteForm(false)}
             />
           </div>
         )}
@@ -261,30 +251,29 @@ export function AttachmentsPanelContent({
             </div>
           ) : (
             <div className="space-y-3 p-2">
+              {canCreate && (
+                <QuickNoteForm
+                  propertyId={propertyId}
+                  prospectId={uploadProspectId}
+                  expandRequest={noteRequest}
+                />
+              )}
               <section>
                 <h3 className="mb-1 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Documents ({scopedDocuments.length})
                 </h3>
-                <DocumentsTable
-                  documents={scopedDocuments}
-                  profile={profile}
-                  showProspect={!isProspectVariant && scope === "all"}
-                />
+                <CompactDocumentsList documents={scopedDocuments} profile={profile} />
               </section>
               <section>
                 <h3 className="mb-1 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Notes ({scopedNotes.length})
                 </h3>
-                {scopedNotes.length === 0 ? (
-                  <p className="px-1 py-4 text-center text-xs text-muted-foreground">No notes.</p>
-                ) : (
-                  <NotesList
-                    notes={scopedNotes}
-                    profile={profile}
-                    propertyId={propertyId}
-                    prospectId={uploadProspectId}
-                  />
-                )}
+                <CompactNotesList
+                  notes={scopedNotes}
+                  profile={profile}
+                  propertyId={propertyId}
+                  prospectId={uploadProspectId}
+                />
               </section>
             </div>
           )}
@@ -301,7 +290,7 @@ export function AttachmentsPanel({
   return (
     <aside
       className={cn(
-        "hidden min-h-0 w-80 shrink-0 flex-col border-l bg-background md:flex",
+        "hidden min-h-0 w-80 shrink-0 flex-col overflow-hidden border-l bg-background md:flex",
         className,
       )}
     >
@@ -350,13 +339,15 @@ export function SidePanel({
   return (
     <aside
       className={cn(
-        "hidden min-h-0 w-80 shrink-0 flex-col border-l bg-background md:flex",
+        "hidden min-h-0 w-80 shrink-0 flex-col overflow-hidden border-l bg-background md:flex",
         className,
       )}
     >
-      <SidePanelContent title={title} onClose={onClose} bodyClassName={bodyClassName}>
-        {children}
-      </SidePanelContent>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <SidePanelContent title={title} onClose={onClose} bodyClassName={bodyClassName}>
+          {children}
+        </SidePanelContent>
+      </div>
     </aside>
   );
 }

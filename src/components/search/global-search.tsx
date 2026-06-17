@@ -36,6 +36,7 @@ export function GlobalSearch({ defaultQuery = "" }: { defaultQuery?: string }) {
         <Input
           type="search"
           name="q"
+          data-global-search="true"
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);

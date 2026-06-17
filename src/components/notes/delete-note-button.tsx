@@ -10,10 +10,12 @@ export function DeleteNoteButton({
   noteId,
   propertyId,
   prospectId,
+  compact = false,
 }: {
   noteId: string;
   propertyId: string;
   prospectId: string | null;
+  compact?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -33,7 +35,14 @@ export function DeleteNoteButton({
   }
 
   return (
-    <Button type="button" variant="destructive" size="sm" disabled={pending} onClick={handleDelete}>
+    <Button
+      type="button"
+      variant={compact ? "ghost" : "destructive"}
+      size="sm"
+      className={compact ? "h-6 px-2 text-[11px] text-destructive hover:text-destructive" : undefined}
+      disabled={pending}
+      onClick={handleDelete}
+    >
       {pending ? "Deleting..." : "Delete"}
     </Button>
   );

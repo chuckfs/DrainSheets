@@ -12,7 +12,7 @@ export function GridToolbar({ left, center, right, className }: GridToolbarProps
   return (
     <div
       className={cn(
-        "flex min-h-9 flex-wrap items-center gap-2 border-b bg-muted/30 px-3 py-1",
+        "flex h-9 flex-wrap items-center gap-2 border-b bg-muted/30 px-3",
         className,
       )}
     >

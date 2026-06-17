@@ -1,8 +1,8 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Building2,
+  Clock,
   Contact,
-  LayoutDashboard,
   Paperclip,
   Settings,
   Store,
@@ -17,7 +17,7 @@ export type NavItem = {
 };
 
 export const mainNavItems: NavItem[] = [
-  { href: "/", label: "Home", icon: LayoutDashboard, exact: true },
+  { href: "/", label: "Recents", icon: Clock, exact: true },
   { href: "/properties", label: "Properties", icon: Building2 },
   { href: "/prospects", label: "Prospects", icon: Store },
   { href: "/contacts", label: "Contacts", icon: Contact },
