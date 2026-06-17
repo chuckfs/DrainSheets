@@ -12,6 +12,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  SmartsheetGrid,
+  SmartsheetGridBody,
+  SmartsheetGridCell,
+  SmartsheetGridEmpty,
+  SmartsheetGridHead,
+  SmartsheetGridHeader,
+  SmartsheetGridRow,
+} from "@/components/data/smartsheet-grid";
 import type { UserRole, UserStatus } from "@/types/domain";
 
 type OrgUser = {
@@ -58,7 +67,6 @@ export function UsersTable({
 
   function handleStatusToggle(userId: string, currentStatus: UserStatus) {
     const nextStatus: UserStatus = currentStatus === "active" ? "disabled" : "active";
-
     startTransition(async () => {
       await updateUserStatus(userId, nextStatus);
       router.refresh();
@@ -66,30 +74,32 @@ export function UsersTable({
   }
 
   return (
-    <div className="space-y-8">
-      <div className="overflow-hidden rounded-lg border">
-        <table className="w-full text-sm">
-          <thead className="border-b bg-muted/50">
-            <tr>
-              <th className="px-4 py-3 text-left font-medium">Name</th>
-              <th className="px-4 py-3 text-left font-medium">Email</th>
-              <th className="px-4 py-3 text-left font-medium">Role</th>
-              <th className="px-4 py-3 text-left font-medium">Status</th>
-              <th className="px-4 py-3 text-right font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
+    <div className="space-y-4">
+      {users.length === 0 ? (
+        <SmartsheetGridEmpty message="No team members found." />
+      ) : (
+        <SmartsheetGrid>
+          <SmartsheetGridHeader>
+            <SmartsheetGridRow className="hover:bg-transparent even:bg-transparent">
+              <SmartsheetGridHead>Name</SmartsheetGridHead>
+              <SmartsheetGridHead>Email</SmartsheetGridHead>
+              <SmartsheetGridHead className="w-28">Role</SmartsheetGridHead>
+              <SmartsheetGridHead className="w-24">Status</SmartsheetGridHead>
+              <SmartsheetGridHead className="w-24 text-right">Actions</SmartsheetGridHead>
+            </SmartsheetGridRow>
+          </SmartsheetGridHeader>
+          <SmartsheetGridBody>
             {users.map((user) => {
               const isSelf = user.id === currentUserId;
               const isOwner = user.role === "owner";
 
               return (
-                <tr key={user.id} className="border-b last:border-b-0">
-                  <td className="px-4 py-3">{user.name}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{user.email}</td>
-                  <td className="px-4 py-3">
+                <SmartsheetGridRow key={user.id}>
+                  <SmartsheetGridCell className="font-medium">{user.name}</SmartsheetGridCell>
+                  <SmartsheetGridCell className="text-muted-foreground">{user.email}</SmartsheetGridCell>
+                  <SmartsheetGridCell>
                     {isOwner || isSelf ? (
-                      <Badge variant={roleBadgeVariant(user.role)} className="capitalize">
+                      <Badge variant={roleBadgeVariant(user.role)} className="h-5 px-1.5 text-[10px] capitalize">
                         {user.role}
                       </Badge>
                     ) : (
@@ -98,7 +108,7 @@ export function UsersTable({
                         onValueChange={(value) => handleRoleChange(user.id, value as UserRole)}
                         disabled={pending}
                       >
-                        <SelectTrigger className="h-8 w-28">
+                        <SelectTrigger className="h-7 w-24 text-xs">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -107,53 +117,57 @@ export function UsersTable({
                         </SelectContent>
                       </Select>
                     )}
-                  </td>
-                  <td className="px-4 py-3 capitalize">{user.status}</td>
-                  <td className="px-4 py-3 text-right">
+                  </SmartsheetGridCell>
+                  <SmartsheetGridCell className="capitalize text-muted-foreground">
+                    {user.status}
+                  </SmartsheetGridCell>
+                  <SmartsheetGridCell className="text-right">
                     {!isSelf && !isOwner && (
                       <Button
                         type="button"
                         variant="outline"
-                        size="sm"
+                        size="xs"
                         disabled={pending}
                         onClick={() => handleStatusToggle(user.id, user.status)}
                       >
                         {user.status === "active" ? "Disable" : "Enable"}
                       </Button>
                     )}
-                  </td>
-                </tr>
+                  </SmartsheetGridCell>
+                </SmartsheetGridRow>
               );
             })}
-          </tbody>
-        </table>
-      </div>
+          </SmartsheetGridBody>
+        </SmartsheetGrid>
+      )}
 
       {invitations.length > 0 && (
         <div>
-          <h3 className="mb-3 text-sm font-medium">Pending invitations</h3>
-          <div className="overflow-hidden rounded-lg border">
-            <table className="w-full text-sm">
-              <thead className="border-b bg-muted/50">
-                <tr>
-                  <th className="px-4 py-3 text-left font-medium">Email</th>
-                  <th className="px-4 py-3 text-left font-medium">Role</th>
-                  <th className="px-4 py-3 text-left font-medium">Expires</th>
-                </tr>
-              </thead>
-              <tbody>
-                {invitations.map((invite) => (
-                  <tr key={invite.id} className="border-b last:border-b-0">
-                    <td className="px-4 py-3">{invite.email}</td>
-                    <td className="px-4 py-3 capitalize">{invite.role}</td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {new Date(invite.expires_at).toLocaleDateString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Pending invitations
+          </h3>
+          <SmartsheetGrid>
+            <SmartsheetGridHeader>
+              <SmartsheetGridRow className="hover:bg-transparent even:bg-transparent">
+                <SmartsheetGridHead>Email</SmartsheetGridHead>
+                <SmartsheetGridHead className="w-24">Role</SmartsheetGridHead>
+                <SmartsheetGridHead className="w-28">Expires</SmartsheetGridHead>
+              </SmartsheetGridRow>
+            </SmartsheetGridHeader>
+            <SmartsheetGridBody>
+              {invitations.map((invite) => (
+                <SmartsheetGridRow key={invite.id}>
+                  <SmartsheetGridCell>{invite.email}</SmartsheetGridCell>
+                  <SmartsheetGridCell className="capitalize text-muted-foreground">
+                    {invite.role}
+                  </SmartsheetGridCell>
+                  <SmartsheetGridCell className="text-muted-foreground">
+                    {new Date(invite.expires_at).toLocaleDateString()}
+                  </SmartsheetGridCell>
+                </SmartsheetGridRow>
+              ))}
+            </SmartsheetGridBody>
+          </SmartsheetGrid>
         </div>
       )}
     </div>

@@ -1,7 +1,9 @@
 import { Suspense } from "react";
 import { listDocuments } from "@/actions/documents";
-import { DocumentFilters } from "@/components/documents/document-filters";
+import { DocumentsGridToolbar } from "@/components/documents/documents-grid-toolbar";
 import { DocumentsTable } from "@/components/documents/documents-table";
+import { SheetHeader } from "@/components/layout/sheet-header";
+import { ListPageShell } from "@/components/layout/list-page-shell";
 import { requireProfile } from "@/lib/auth/guards";
 
 export default async function DocumentsPage({
@@ -26,16 +28,19 @@ export default async function DocumentsPage({
   });
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Documents</h1>
-        <p className="text-muted-foreground">{total} total across all properties</p>
-      </div>
-
-      <Suspense>
-        <DocumentFilters totalPages={totalPages} currentPage={currentPage} />
-      </Suspense>
-
+    <ListPageShell
+      header={
+        <SheetHeader
+          title="Documents"
+          subtitle={`${total} across all properties`}
+        />
+      }
+      toolbar={
+        <Suspense fallback={<div className="h-9 border-b bg-muted/30" />}>
+          <DocumentsGridToolbar totalPages={totalPages} currentPage={currentPage} />
+        </Suspense>
+      }
+    >
       <DocumentsTable
         documents={documents}
         profile={profile}
@@ -43,6 +48,6 @@ export default async function DocumentsPage({
         showProspect
         showView
       />
-    </div>
+    </ListPageShell>
   );
 }

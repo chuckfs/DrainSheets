@@ -39,6 +39,17 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-rail: var(--rail);
+  --color-rail-foreground: var(--rail-foreground);
+  --color-rail-accent: var(--rail-accent);
+  --color-rail-border: var(--rail-border);
+  --color-rail-indicator: var(--rail-indicator);
+  --color-row-selected: var(--row-selected);
+  --color-row-hover: var(--row-hover);
+  --color-grid-line: var(--grid-line);
+  --color-link: var(--link);
+  --color-sheet-icon: var(--sheet-icon);
+  --color-share: var(--share);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -81,6 +92,18 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  /* Smartsheet-inspired density & rail */
+  --rail: oklch(0.28 0.06 330);
+  --rail-foreground: oklch(0.98 0 0);
+  --rail-accent: oklch(0.34 0.07 330);
+  --rail-border: oklch(0.24 0.05 330);
+  --rail-indicator: oklch(0.62 0.14 250);
+  --row-selected: oklch(0.94 0.03 240);
+  --row-hover: oklch(0.97 0.01 240);
+  --grid-line: oklch(0.9 0 0);
+  --link: oklch(0.48 0.14 250);
+  --sheet-icon: oklch(0.52 0.16 300);
+  --share: oklch(0.58 0.14 155);
 }
 
 .dark {
@@ -115,6 +138,17 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --rail: oklch(0.22 0.05 330);
+  --rail-foreground: oklch(0.95 0 0);
+  --rail-accent: oklch(0.3 0.06 330);
+  --rail-border: oklch(0.18 0.04 330);
+  --rail-indicator: oklch(0.65 0.14 250);
+  --row-selected: oklch(0.28 0.04 240);
+  --row-hover: oklch(0.24 0.02 240);
+  --grid-line: oklch(1 0 0 / 12%);
+  --link: oklch(0.68 0.12 250);
+  --sheet-icon: oklch(0.62 0.14 300);
+  --share: oklch(0.62 0.14 155);
 }
 
 @layer base {
@@ -126,5 +160,15 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+@layer components {
+  .grid-table th,
+  .grid-table td {
+    border-color: var(--grid-line);
+  }
+  .btn-share {
+    @apply bg-share text-white hover:bg-share/90;
   }
 }

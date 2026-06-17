@@ -8,21 +8,21 @@ export default async function UsersSettingsPage() {
   const [users, invitations] = await Promise.all([listOrgUsers(), listPendingInvitations()]);
 
   return (
-    <div className="space-y-8">
-      <div className="space-y-4">
+    <div className="space-y-6">
+      <section className="space-y-3">
         <div>
-          <h2 className="text-lg font-medium">Invite users</h2>
-          <p className="text-sm text-muted-foreground">
+          <h2 className="text-sm font-medium">Invite users</h2>
+          <p className="text-xs text-muted-foreground">
             Send an invitation link manually until email delivery is enabled.
           </p>
         </div>
         <InviteUserForm />
-      </div>
+      </section>
 
-      <div className="space-y-4">
-        <h2 className="text-lg font-medium">Team members</h2>
+      <section className="space-y-2">
+        <h2 className="text-sm font-medium">Team members</h2>
         <UsersTable users={users} invitations={invitations} currentUserId={owner.id} />
-      </div>
+      </section>
     </div>
   );
 }

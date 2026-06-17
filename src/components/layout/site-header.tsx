@@ -1,22 +1,25 @@
+"use client";
+
 import { Badge } from "@/components/ui/badge";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { GlobalSearch } from "@/components/search/global-search";
+import { MobileNavSheet } from "@/components/layout/mobile-nav-sheet";
 import type { Profile } from "@/types/domain";
 
 export function SiteHeader({ profile }: { profile: Profile }) {
   return (
-    <header className="flex h-auto min-h-14 flex-wrap items-center justify-between gap-4 px-6 py-3">
-      <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
-        <p className="shrink-0 text-sm text-muted-foreground">Commercial real estate CRM</p>
+    <header className="flex h-12 shrink-0 items-center gap-3 border-b px-3">
+      <MobileNavSheet />
+      <div className="min-w-0 flex-1">
         <GlobalSearch />
       </div>
-      <div className="flex items-center gap-3">
-        <div className="text-right">
-          <p className="text-sm font-medium">{profile.name}</p>
-          <Badge variant="secondary" className="capitalize">
-            {profile.role}
-          </Badge>
-        </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <span className="hidden max-w-[120px] truncate text-xs font-medium sm:inline">
+          {profile.name}
+        </span>
+        <Badge variant="secondary" className="h-5 px-1.5 text-[10px] capitalize">
+          {profile.role}
+        </Badge>
         <SignOutButton />
       </div>
     </header>

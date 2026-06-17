@@ -1,28 +1,21 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import {
   listEditors,
   listPropertyAssignments,
 } from "@/actions/assignments";
-import { getProperty } from "@/actions/properties";
-import { listProspects } from "@/actions/prospects";
+import { getPropertyActivity } from "@/actions/activity";
+import { listContactsForProperty } from "@/actions/contacts";
 import { getDocumentsForProperty } from "@/actions/documents";
 import { getNotesForProperty } from "@/actions/notes";
-import { ArchivePropertyButton } from "@/components/properties/archive-property-button";
-import { PropertyAssignmentsPanel } from "@/components/properties/property-assignments-panel";
-import { PropertyDocumentsSection } from "@/components/documents/property-documents-section";
-import { NotesSection } from "@/components/notes/notes-section";
-import { ProspectsTable } from "@/components/prospects/prospects-table";
+import { getProperty } from "@/actions/properties";
+import { listProspects } from "@/actions/prospects";
+import { listOrgUsers } from "@/actions/users";
+import { PropertyDetailView } from "@/components/properties/property-detail-view";
 import { requireProfile } from "@/lib/auth/guards";
-import {
-  canArchiveProperty,
-  canManageAssignments,
-  propertyStatusLabel,
-} from "@/lib/permissions/property";
+import { canManageAssignments } from "@/lib/permissions/property";
 import { canUploadDocument } from "@/lib/permissions/document";
-import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { buildProspectIndicators } from "@/lib/prospects/indicators";
 
 export default async function PropertyDetailPage({
   params,
@@ -37,79 +30,46 @@ export default async function PropertyDetailPage({
     notFound();
   }
 
-  const { prospects } = await listProspects({ propertyId: id, page: 1 });
-  const documents = await getDocumentsForProperty(id);
-  const notes = await getNotesForProperty(id);
-  const assignments = canManageAssignments(profile)
-    ? await listPropertyAssignments(id)
-    : [];
-  const editors = canManageAssignments(profile) ? await listEditors() : [];
+  const canManage = canManageAssignments(profile);
+
+  const [
+    { prospects },
+    documents,
+    notes,
+    activities,
+    contactLabels,
+    assignments,
+    editors,
+    orgUsers,
+  ] = await Promise.all([
+    listProspects({ propertyId: id, page: 1 }),
+    getDocumentsForProperty(id),
+    getNotesForProperty(id),
+    getPropertyActivity(id),
+    listContactsForProperty(id),
+    canManage ? listPropertyAssignments(id) : Promise.resolve([]),
+    canManage ? listEditors() : Promise.resolve([]),
+    canManage ? listOrgUsers() : Promise.resolve([]),
+  ]);
+
+  const indicators = buildProspectIndicators(documents, notes);
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight">{property.name}</h1>
-            <Badge variant={property.status === "archived" ? "secondary" : "default"}>
-              {propertyStatusLabel(property.status)}
-            </Badge>
-          </div>
-          {(property.address || property.city || property.state) && (
-            <p className="mt-1 text-muted-foreground">
-              {[property.address, property.city, property.state].filter(Boolean).join(", ")}
-            </p>
-          )}
-        </div>
-        <div className="flex gap-2">
-          <Link href={`/properties/${id}/edit`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
-            Edit
-          </Link>
-          {canArchiveProperty(profile) && property.status === "active" && (
-            <ArchivePropertyButton propertyId={id} propertyName={property.name} />
-          )}
-        </div>
-      </div>
-
-      {property.description && (
-        <div className="rounded-lg border p-4">
-          <h2 className="mb-2 text-sm font-medium">Description</h2>
-          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{property.description}</p>
-        </div>
-      )}
-
-      {canManageAssignments(profile) && (
-        <PropertyAssignmentsPanel
-          propertyId={id}
-          editors={editors}
-          assignments={assignments}
-        />
-      )}
-
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-medium">Prospects</h2>
-          {property.status === "active" && (
-            <Link
-              href={`/properties/${id}/prospects/new`}
-              className={cn(buttonVariants({ size: "sm" }))}
-            >
-              Add prospect
-            </Link>
-          )}
-        </div>
-        <ProspectsTable prospects={prospects} />
-      </div>
-
-      <PropertyDocumentsSection
-        propertyId={id}
-        documents={documents}
+    <Suspense fallback={<div className="-m-3 min-h-[calc(100vh-3rem)] animate-pulse bg-muted/20" />}>
+      <PropertyDetailView
+        property={property}
         prospects={prospects}
+        contactLabels={contactLabels}
+        indicators={indicators}
+        documents={documents}
+        notes={notes}
+        activities={activities}
         profile={profile}
         canUpload={canUploadDocument(profile) && property.status === "active"}
+        editors={editors}
+        assignments={assignments}
+        orgUsers={orgUsers}
       />
-
-      <NotesSection notes={notes} profile={profile} propertyId={id} />
-    </div>
+    </Suspense>
   );
 }

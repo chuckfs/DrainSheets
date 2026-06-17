@@ -1,14 +1,25 @@
+import Link from "next/link";
+import { PlusIcon } from "lucide-react";
 import { getRecentActivity } from "@/actions/activity";
 import { getDashboardData } from "@/actions/dashboard";
-import { ActivityFeed } from "@/components/activity/activity-feed";
-import { AssignedPropertiesCard } from "@/components/dashboard/assigned-properties-card";
-import { DashboardStats } from "@/components/dashboard/dashboard-stats";
-import { RecentProspectsCard } from "@/components/dashboard/recent-prospects-card";
-import Link from "next/link";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { CompactActivityFeed } from "@/components/dashboard/compact-activity-feed";
+import { DashboardPropertiesTable } from "@/components/dashboard/dashboard-properties-table";
+import { DashboardProspectsTable } from "@/components/dashboard/dashboard-prospects-table";
+import { KpiStrip } from "@/components/dashboard/kpi-strip";
+import { SheetHeader } from "@/components/layout/sheet-header";
+import { ListPageShell } from "@/components/layout/list-page-shell";
 import { requireProfile } from "@/lib/auth/guards";
 import { canCreateProperty } from "@/lib/permissions/property";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+function dashboardSubtitle(): string {
+  return new Date().toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+}
 
 export default async function DashboardPage() {
   const profile = await requireProfile();
@@ -16,30 +27,33 @@ export default async function DashboardPage() {
     await Promise.all([getDashboardData(profile), getRecentActivity()]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back, {profile.name}.</p>
-        </div>
-        {canCreateProperty(profile) && (
-          <Link href="/properties/new" className={cn(buttonVariants())}>
-            Create property
-          </Link>
-        )}
+    <ListPageShell
+      header={
+        <SheetHeader
+          title="Home"
+          subtitle={dashboardSubtitle()}
+          actions={
+            canCreateProperty(profile) ? (
+              <Link
+                href="/properties/new"
+                className={cn(buttonVariants({ size: "sm" }), "btn-share gap-1.5")}
+              >
+                <PlusIcon className="size-3.5" />
+                Create
+              </Link>
+            ) : undefined
+          }
+        />
+      }
+      toolbar={<KpiStrip stats={stats} />}
+    >
+      <div className="flex flex-col gap-4 lg:flex-row">
+        <DashboardPropertiesTable title={assignedTitle} properties={assignedProperties} />
+        <DashboardProspectsTable prospects={recentProspects} />
       </div>
-
-      <DashboardStats stats={stats} />
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <AssignedPropertiesCard title={assignedTitle} properties={assignedProperties} />
-        <RecentProspectsCard prospects={recentProspects} />
+      <div className="mt-4">
+        <CompactActivityFeed activities={activities} />
       </div>
-
-      <div className="space-y-4">
-        <h2 className="text-lg font-medium">Recent activity</h2>
-        <ActivityFeed activities={activities} />
-      </div>
-    </div>
+    </ListPageShell>
   );
 }

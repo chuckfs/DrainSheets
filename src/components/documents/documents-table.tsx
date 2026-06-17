@@ -1,12 +1,20 @@
 import Link from "next/link";
+import { PaperclipIcon } from "lucide-react";
 import type { DocumentWithRelations } from "@/actions/documents";
-import { DeleteDocumentButton } from "@/components/documents/delete-document-button";
-import { DownloadDocumentButton } from "@/components/documents/download-document-button";
 import { formatFileSize, mimeTypeLabel } from "@/lib/documents/format";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { formatRelativeTime } from "@/lib/format-relative-time";
 import type { Profile } from "@/types/domain";
 import { canDeleteDocument } from "@/lib/permissions/document";
+import { DocumentRowActions } from "@/components/documents/document-row-actions";
+import {
+  SmartsheetGrid,
+  SmartsheetGridBody,
+  SmartsheetGridCell,
+  SmartsheetGridEmpty,
+  SmartsheetGridHead,
+  SmartsheetGridHeader,
+  SmartsheetGridRow,
+} from "@/components/data/smartsheet-grid";
 
 export function DocumentsTable({
   documents,
@@ -22,98 +30,93 @@ export function DocumentsTable({
   showView?: boolean;
 }) {
   if (documents.length === 0) {
-    return (
-      <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-        No documents found.
-      </p>
-    );
+    return <SmartsheetGridEmpty message="No documents found." />;
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border">
-      <table className="w-full text-sm">
-        <thead className="border-b bg-muted/50">
-          <tr>
-            <th className="px-4 py-3 text-left font-medium">File name</th>
-            <th className="px-4 py-3 text-left font-medium">Type</th>
-            <th className="px-4 py-3 text-left font-medium">Size</th>
-            {showProperty && <th className="px-4 py-3 text-left font-medium">Property</th>}
-            {showProspect && <th className="px-4 py-3 text-left font-medium">Prospect</th>}
-            <th className="px-4 py-3 text-left font-medium">Uploaded by</th>
-            <th className="px-4 py-3 text-left font-medium">Uploaded at</th>
-            <th className="px-4 py-3 text-right font-medium">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {documents.map((document) => (
-            <tr key={document.id} className="border-b last:border-b-0 hover:bg-muted/30">
-              <td className="px-4 py-3 font-medium">{document.file_name}</td>
-              <td className="px-4 py-3 text-muted-foreground">
-                {mimeTypeLabel(document.mime_type)}
-              </td>
-              <td className="px-4 py-3 text-muted-foreground">
-                {formatFileSize(document.file_size)}
-              </td>
-              {showProperty && (
-                <td className="px-4 py-3 text-muted-foreground">
-                  {document.properties ? (
-                    <Link
-                      href={`/properties/${document.properties.id}`}
-                      className="hover:underline"
-                    >
-                      {document.properties.name}
-                    </Link>
-                  ) : (
-                    "—"
-                  )}
-                </td>
+    <SmartsheetGrid>
+      <SmartsheetGridHeader>
+        <SmartsheetGridRow className="hover:bg-transparent even:bg-transparent">
+          <SmartsheetGridHead className="w-10 text-center"> </SmartsheetGridHead>
+          <SmartsheetGridHead>File name</SmartsheetGridHead>
+          <SmartsheetGridHead className="w-24">Type</SmartsheetGridHead>
+          <SmartsheetGridHead className="w-20">Size</SmartsheetGridHead>
+          {showProperty && <SmartsheetGridHead>Property</SmartsheetGridHead>}
+          {showProspect && <SmartsheetGridHead>Prospect</SmartsheetGridHead>}
+          <SmartsheetGridHead className="w-32">Uploaded by</SmartsheetGridHead>
+          <SmartsheetGridHead className="w-28">Uploaded</SmartsheetGridHead>
+          <SmartsheetGridHead className="w-12 text-center"> </SmartsheetGridHead>
+        </SmartsheetGridRow>
+      </SmartsheetGridHeader>
+      <SmartsheetGridBody>
+        {documents.map((document) => (
+          <SmartsheetGridRow key={document.id}>
+            <SmartsheetGridCell className="text-center">
+              <PaperclipIcon className="mx-auto size-3.5 text-sheet-icon" aria-hidden />
+            </SmartsheetGridCell>
+            <SmartsheetGridCell className="max-w-[240px] truncate font-medium">
+              {showView ? (
+                <Link
+                  href={`/documents/${document.id}`}
+                  className="text-link hover:underline"
+                >
+                  {document.file_name}
+                </Link>
+              ) : (
+                document.file_name
               )}
-              {showProspect && (
-                <td className="px-4 py-3 text-muted-foreground">
-                  {document.prospects ? (
-                    <Link
-                      href={`/prospects/${document.prospects.id}`}
-                      className="hover:underline"
-                    >
-                      {document.prospects.company_name}
-                    </Link>
-                  ) : (
-                    "—"
-                  )}
-                </td>
-              )}
-              <td className="px-4 py-3 text-muted-foreground">
-                {document.profiles?.name ?? "—"}
-              </td>
-              <td className="px-4 py-3 text-muted-foreground">
-                {new Date(document.created_at).toLocaleString()}
-              </td>
-              <td className="px-4 py-3">
-                <div className="flex justify-end gap-2">
-                  {showView && (
-                    <Link
-                      href={`/documents/${document.id}`}
-                      className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
-                    >
-                      View
-                    </Link>
-                  )}
-                  <DownloadDocumentButton
-                    documentId={document.id}
-                    fileName={document.file_name}
-                  />
-                  {canDeleteDocument(profile, document) && (
-                    <DeleteDocumentButton
-                      documentId={document.id}
-                      fileName={document.file_name}
-                    />
-                  )}
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+            </SmartsheetGridCell>
+            <SmartsheetGridCell className="text-muted-foreground">
+              {mimeTypeLabel(document.mime_type)}
+            </SmartsheetGridCell>
+            <SmartsheetGridCell className="text-muted-foreground">
+              {formatFileSize(document.file_size)}
+            </SmartsheetGridCell>
+            {showProperty && (
+              <SmartsheetGridCell className="max-w-[140px] truncate text-muted-foreground">
+                {document.properties ? (
+                  <Link
+                    href={`/properties/${document.properties.id}`}
+                    className="text-link hover:underline"
+                  >
+                    {document.properties.name}
+                  </Link>
+                ) : (
+                  "—"
+                )}
+              </SmartsheetGridCell>
+            )}
+            {showProspect && (
+              <SmartsheetGridCell className="max-w-[140px] truncate text-muted-foreground">
+                {document.prospects ? (
+                  <Link
+                    href={`/prospects/${document.prospects.id}`}
+                    className="text-link hover:underline"
+                  >
+                    {document.prospects.company_name}
+                  </Link>
+                ) : (
+                  "—"
+                )}
+              </SmartsheetGridCell>
+            )}
+            <SmartsheetGridCell className="max-w-[120px] truncate text-muted-foreground">
+              {document.profiles?.name ?? "—"}
+            </SmartsheetGridCell>
+            <SmartsheetGridCell className="text-muted-foreground">
+              {formatRelativeTime(document.created_at)}
+            </SmartsheetGridCell>
+            <SmartsheetGridCell className="text-center">
+              <DocumentRowActions
+                documentId={document.id}
+                fileName={document.file_name}
+                canDelete={canDeleteDocument(profile, document)}
+                showView={showView}
+              />
+            </SmartsheetGridCell>
+          </SmartsheetGridRow>
+        ))}
+      </SmartsheetGridBody>
+    </SmartsheetGrid>
   );
 }

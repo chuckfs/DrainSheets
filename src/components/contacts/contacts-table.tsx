@@ -1,9 +1,17 @@
 import Link from "next/link";
+import { Contact } from "lucide-react";
 import type { ContactWithProspect } from "@/actions/contacts";
 import { contactDisplayName } from "@/lib/contacts/display";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { DeleteContactButton } from "@/components/contacts/delete-contact-button";
+import { ContactRowActions } from "@/components/contacts/contact-row-actions";
+import {
+  SmartsheetGrid,
+  SmartsheetGridBody,
+  SmartsheetGridCell,
+  SmartsheetGridEmpty,
+  SmartsheetGridHead,
+  SmartsheetGridHeader,
+  SmartsheetGridRow,
+} from "@/components/data/smartsheet-grid";
 
 export function ContactsTable({
   contacts,
@@ -14,95 +22,93 @@ export function ContactsTable({
   canEdit: boolean;
   canDelete: boolean;
 }) {
+  const showActions = canEdit || canDelete;
+
   if (contacts.length === 0) {
-    return (
-      <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-        No contacts found.
-      </p>
-    );
+    return <SmartsheetGridEmpty message="No contacts found." />;
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border">
-      <table className="w-full text-sm">
-        <thead className="border-b bg-muted/50">
-          <tr>
-            <th className="px-4 py-3 text-left font-medium">Name</th>
-            <th className="px-4 py-3 text-left font-medium">Company</th>
-            <th className="px-4 py-3 text-left font-medium">Prospect</th>
-            <th className="px-4 py-3 text-left font-medium">Property</th>
-            <th className="px-4 py-3 text-left font-medium">Email</th>
-            <th className="px-4 py-3 text-left font-medium">Phone</th>
-            {(canEdit || canDelete) && (
-              <th className="px-4 py-3 text-right font-medium">Actions</th>
-            )}
-          </tr>
-        </thead>
-        <tbody>
-          {contacts.map((contact) => (
-            <tr key={contact.id} className="border-b last:border-b-0 hover:bg-muted/30">
-              <td className="px-4 py-3">
-                <Link href={`/contacts/${contact.id}`} className="font-medium hover:underline">
-                  {contactDisplayName(contact)}
+    <SmartsheetGrid>
+      <SmartsheetGridHeader>
+        <SmartsheetGridRow className="hover:bg-transparent even:bg-transparent">
+          <SmartsheetGridHead className="w-10 text-center"> </SmartsheetGridHead>
+          <SmartsheetGridHead>Name</SmartsheetGridHead>
+          <SmartsheetGridHead>Company</SmartsheetGridHead>
+          <SmartsheetGridHead>Prospect</SmartsheetGridHead>
+          <SmartsheetGridHead>Property</SmartsheetGridHead>
+          <SmartsheetGridHead>Email</SmartsheetGridHead>
+          <SmartsheetGridHead className="w-28">Phone</SmartsheetGridHead>
+          {showActions && <SmartsheetGridHead className="w-12 text-center"> </SmartsheetGridHead>}
+        </SmartsheetGridRow>
+      </SmartsheetGridHeader>
+      <SmartsheetGridBody>
+        {contacts.map((contact) => (
+          <SmartsheetGridRow key={contact.id}>
+            <SmartsheetGridCell className="text-center">
+              <Contact className="mx-auto size-3.5 text-sheet-icon" aria-hidden />
+            </SmartsheetGridCell>
+            <SmartsheetGridCell>
+              <Link
+                href={`/contacts/${contact.id}`}
+                className="font-medium text-link hover:underline"
+              >
+                {contactDisplayName(contact)}
+              </Link>
+            </SmartsheetGridCell>
+            <SmartsheetGridCell className="max-w-[140px] truncate text-muted-foreground">
+              {contact.company ?? "—"}
+            </SmartsheetGridCell>
+            <SmartsheetGridCell className="max-w-[160px] truncate text-muted-foreground">
+              {contact.prospects ? (
+                <Link
+                  href={`/prospects/${contact.prospects.id}`}
+                  className="text-link hover:underline"
+                >
+                  {contact.prospects.company_name}
                 </Link>
-              </td>
-              <td className="px-4 py-3 text-muted-foreground">{contact.company ?? "—"}</td>
-              <td className="px-4 py-3 text-muted-foreground">
-                {contact.prospects ? (
-                  <Link href={`/prospects/${contact.prospects.id}`} className="hover:underline">
-                    {contact.prospects.company_name}
-                  </Link>
-                ) : (
-                  "—"
-                )}
-              </td>
-              <td className="px-4 py-3 text-muted-foreground">
-                {contact.prospects?.properties ? (
-                  <Link
-                    href={`/properties/${contact.prospects.properties.id}`}
-                    className="hover:underline"
-                  >
-                    {contact.prospects.properties.name}
-                  </Link>
-                ) : (
-                  "—"
-                )}
-              </td>
-              <td className="px-4 py-3 text-muted-foreground">
-                {contact.email ? (
-                  <a href={`mailto:${contact.email}`} className="hover:underline">
-                    {contact.email}
-                  </a>
-                ) : (
-                  "—"
-                )}
-              </td>
-              <td className="px-4 py-3 text-muted-foreground">{contact.phone ?? "—"}</td>
-              {(canEdit || canDelete) && (
-                <td className="px-4 py-3">
-                  <div className="flex justify-end gap-2">
-                    {canEdit && (
-                      <Link
-                        href={`/contacts/${contact.id}/edit`}
-                        className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-                      >
-                        Edit
-                      </Link>
-                    )}
-                    {canDelete && (
-                      <DeleteContactButton
-                        contactId={contact.id}
-                        prospectId={contact.prospect_id}
-                        contactName={contactDisplayName(contact)}
-                      />
-                    )}
-                  </div>
-                </td>
+              ) : (
+                "—"
               )}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+            </SmartsheetGridCell>
+            <SmartsheetGridCell className="max-w-[140px] truncate text-muted-foreground">
+              {contact.prospects?.properties ? (
+                <Link
+                  href={`/properties/${contact.prospects.properties.id}`}
+                  className="text-link hover:underline"
+                >
+                  {contact.prospects.properties.name}
+                </Link>
+              ) : (
+                "—"
+              )}
+            </SmartsheetGridCell>
+            <SmartsheetGridCell className="max-w-[180px] truncate text-muted-foreground">
+              {contact.email ? (
+                <a href={`mailto:${contact.email}`} className="text-link hover:underline">
+                  {contact.email}
+                </a>
+              ) : (
+                "—"
+              )}
+            </SmartsheetGridCell>
+            <SmartsheetGridCell className="text-muted-foreground">
+              {contact.phone ?? "—"}
+            </SmartsheetGridCell>
+            {showActions && (
+              <SmartsheetGridCell className="text-center">
+                <ContactRowActions
+                  contactId={contact.id}
+                  prospectId={contact.prospect_id}
+                  contactName={contactDisplayName(contact)}
+                  canEdit={canEdit}
+                  canDelete={canDelete}
+                />
+              </SmartsheetGridCell>
+            )}
+          </SmartsheetGridRow>
+        ))}
+      </SmartsheetGridBody>
+    </SmartsheetGrid>
   );
 }

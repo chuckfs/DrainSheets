@@ -1,27 +1,16 @@
 import { requireProfile } from "@/lib/auth/guards";
-import { AppSidebar } from "@/components/layout/app-sidebar";
+import { IconRail } from "@/components/layout/icon-rail";
 import { SiteHeader } from "@/components/layout/site-header";
-import { Separator } from "@/components/ui/separator";
-
-const navItems = [
-  { href: "/", label: "Dashboard" },
-  { href: "/properties", label: "Properties" },
-  { href: "/prospects", label: "Prospects" },
-  { href: "/contacts", label: "Contacts" },
-  { href: "/documents", label: "Documents" },
-  { href: "/settings", label: "Settings" },
-] as const;
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const profile = await requireProfile();
 
   return (
     <div className="flex min-h-screen">
-      <AppSidebar items={navItems} />
-      <div className="flex flex-1 flex-col">
+      <IconRail />
+      <div className="flex min-w-0 flex-1 flex-col">
         <SiteHeader profile={profile} />
-        <Separator />
-        <main className="flex-1 p-6">{children}</main>
+        <main className="flex-1 overflow-auto p-3">{children}</main>
       </div>
     </div>
   );

@@ -6,6 +6,15 @@ import {
   searchResultHref,
   type SearchResult,
 } from "@/lib/search/format";
+import {
+  SmartsheetGrid,
+  SmartsheetGridBody,
+  SmartsheetGridCell,
+  SmartsheetGridEmpty,
+  SmartsheetGridHead,
+  SmartsheetGridHeader,
+  SmartsheetGridRow,
+} from "@/components/data/smartsheet-grid";
 
 export function SearchResults({
   query,
@@ -19,49 +28,45 @@ export function SearchResults({
   const grouped = groupSearchResults(results);
   const hasResults = total > 0;
 
+  if (!hasResults) {
+    return <SmartsheetGridEmpty message={`No results found for “${query}”`} />;
+  }
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Search</h1>
-        <p className="text-muted-foreground">
-          {hasResults
-            ? `${total} result${total === 1 ? "" : "s"} for “${query}”`
-            : `No results found for “${query}”`}
-        </p>
-      </div>
+    <div className="space-y-4">
+      {SEARCH_ENTITY_ORDER.map((entityType) => {
+        const items = grouped[entityType];
+        if (items.length === 0) return null;
 
-      {!hasResults ? (
-        <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-          No results found.
-        </p>
-      ) : (
-        <div className="space-y-8">
-          {SEARCH_ENTITY_ORDER.map((entityType) => {
-            const items = grouped[entityType];
-            if (items.length === 0) {
-              return null;
-            }
-
-            return (
-              <section key={entityType} className="space-y-3">
-                <h2 className="text-lg font-medium">{SEARCH_ENTITY_LABELS[entityType]}</h2>
-                <ul className="overflow-hidden rounded-lg border">
-                  {items.map((result) => (
-                    <li key={`${result.entity_type}-${result.entity_id}`} className="border-b last:border-b-0">
+        return (
+          <section key={entityType}>
+            <h2 className="border-x border-t bg-muted/40 px-2 py-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {SEARCH_ENTITY_LABELS[entityType]} ({items.length})
+            </h2>
+            <SmartsheetGrid className="border-t-0">
+              <SmartsheetGridHeader>
+                <SmartsheetGridRow className="hover:bg-transparent even:bg-transparent">
+                  <SmartsheetGridHead>Name</SmartsheetGridHead>
+                </SmartsheetGridRow>
+              </SmartsheetGridHeader>
+              <SmartsheetGridBody>
+                {items.map((result) => (
+                  <SmartsheetGridRow key={`${result.entity_type}-${result.entity_id}`}>
+                    <SmartsheetGridCell>
                       <Link
                         href={searchResultHref(result)}
-                        className="block px-4 py-3 text-sm hover:bg-muted/30"
+                        className="font-medium text-link hover:underline"
                       >
-                        <span className="font-medium">{result.title}</span>
+                        {result.title}
                       </Link>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            );
-          })}
-        </div>
-      )}
+                    </SmartsheetGridCell>
+                  </SmartsheetGridRow>
+                ))}
+              </SmartsheetGridBody>
+            </SmartsheetGrid>
+          </section>
+        );
+      })}
     </div>
   );
 }

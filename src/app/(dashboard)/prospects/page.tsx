@@ -1,7 +1,9 @@
 import { Suspense } from "react";
 import { listProspects } from "@/actions/prospects";
-import { ProspectFilters } from "@/components/prospects/prospect-filters";
+import { ProspectsGridToolbar } from "@/components/prospects/prospects-grid-toolbar";
 import { ProspectsTable } from "@/components/prospects/prospects-table";
+import { SheetHeader } from "@/components/layout/sheet-header";
+import { ListPageShell } from "@/components/layout/list-page-shell";
 import { requireProfile } from "@/lib/auth/guards";
 import type { ProspectStatus } from "@/types/domain";
 
@@ -30,17 +32,20 @@ export default async function ProspectsPage({
   });
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Prospects</h1>
-        <p className="text-muted-foreground">{total} total across all properties</p>
-      </div>
-
-      <Suspense>
-        <ProspectFilters totalPages={totalPages} currentPage={currentPage} />
-      </Suspense>
-
+    <ListPageShell
+      header={
+        <SheetHeader
+          title="Prospects"
+          subtitle={`${total} across all properties`}
+        />
+      }
+      toolbar={
+        <Suspense fallback={<div className="h-9 border-b bg-muted/30" />}>
+          <ProspectsGridToolbar totalPages={totalPages} currentPage={currentPage} />
+        </Suspense>
+      }
+    >
       <ProspectsTable prospects={prospects} />
-    </div>
+    </ListPageShell>
   );
 }

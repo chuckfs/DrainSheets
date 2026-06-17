@@ -23,11 +23,13 @@ export type AssignedProperty = {
   name: string;
   city: string | null;
   state: string | null;
+  updated_at: string;
 };
 
 export type RecentProspect = {
   id: string;
   company_name: string;
+  created_at: string;
   properties: { id: string; name: string } | null;
 };
 
@@ -54,7 +56,7 @@ export async function getAssignedProperties(): Promise<AssignedProperty[]> {
   if (hasRole(profile.role, "admin")) {
     const { data, error } = await supabase
       .from("properties")
-      .select("id, name, city, state")
+      .select("id, name, city, state, updated_at")
       .eq("status", "active")
       .order("created_at", { ascending: false })
       .limit(CARD_LIMIT);
@@ -68,7 +70,7 @@ export async function getAssignedProperties(): Promise<AssignedProperty[]> {
 
   const { data, error } = await supabase
     .from("property_assignments")
-    .select("properties(id, name, city, state)")
+    .select("properties(id, name, city, state, updated_at)")
     .eq("user_id", profile.id)
     .order("created_at", { ascending: false })
     .limit(CARD_LIMIT);
@@ -91,7 +93,7 @@ export async function getRecentProspects(): Promise<RecentProspect[]> {
 
   const { data, error } = await supabase
     .from("prospects")
-    .select("id, company_name, properties(id, name)")
+    .select("id, company_name, created_at, properties(id, name)")
     .order("created_at", { ascending: false })
     .limit(CARD_LIMIT);
 
@@ -102,6 +104,7 @@ export async function getRecentProspects(): Promise<RecentProspect[]> {
   return (data ?? []).map((row) => ({
     id: row.id,
     company_name: row.company_name,
+    created_at: row.created_at,
     properties: Array.isArray(row.properties) ? row.properties[0] ?? null : row.properties,
   }));
 }

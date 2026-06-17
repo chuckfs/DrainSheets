@@ -1,7 +1,9 @@
 import { Suspense } from "react";
 import { listContacts } from "@/actions/contacts";
-import { ContactFilters } from "@/components/contacts/contact-filters";
+import { ContactsGridToolbar } from "@/components/contacts/contacts-grid-toolbar";
 import { ContactsTable } from "@/components/contacts/contacts-table";
+import { SheetHeader } from "@/components/layout/sheet-header";
+import { ListPageShell } from "@/components/layout/list-page-shell";
 import { requireProfile } from "@/lib/auth/guards";
 import { canDeleteContact, canEditContact } from "@/lib/permissions/contact";
 
@@ -27,21 +29,24 @@ export default async function ContactsPage({
   });
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Contacts</h1>
-        <p className="text-muted-foreground">{total} total across all prospects</p>
-      </div>
-
-      <Suspense>
-        <ContactFilters totalPages={totalPages} currentPage={currentPage} />
-      </Suspense>
-
+    <ListPageShell
+      header={
+        <SheetHeader
+          title="Contacts"
+          subtitle={`${total} across all prospects`}
+        />
+      }
+      toolbar={
+        <Suspense fallback={<div className="h-9 border-b bg-muted/30" />}>
+          <ContactsGridToolbar totalPages={totalPages} currentPage={currentPage} />
+        </Suspense>
+      }
+    >
       <ContactsTable
         contacts={contacts}
         canEdit={canEditContact(profile)}
         canDelete={canDeleteContact(profile)}
       />
-    </div>
+    </ListPageShell>
   );
 }

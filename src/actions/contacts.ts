@@ -92,6 +92,67 @@ export async function listContacts(params: ContactListParams = {}) {
   };
 }
 
+export type PropertyProspectContact = {
+  prospect_id: string;
+  label: string;
+  email: string | null;
+  phone: string | null;
+};
+
+export async function listContactsForProperty(
+  propertyId: string,
+): Promise<PropertyProspectContact[]> {
+  await requireProfile();
+  const supabase = await createClient();
+
+  const { data: prospects, error: prospectError } = await supabase
+    .from("prospects")
+    .select("id")
+    .eq("property_id", propertyId);
+
+  if (prospectError) {
+    throw new Error(prospectError.message);
+  }
+
+  const prospectIds = (prospects ?? []).map((row) => row.id);
+  if (prospectIds.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("contacts")
+    .select("prospect_id, first_name, last_name, email, phone")
+    .in("prospect_id", prospectIds)
+    .order("first_name", { ascending: true });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const labels = new Map<
+    string,
+    { label: string; email: string | null; phone: string | null }
+  >();
+  for (const contact of data ?? []) {
+    if (!contact.prospect_id || labels.has(contact.prospect_id)) {
+      continue;
+    }
+    const name = [contact.first_name, contact.last_name].filter(Boolean).join(" ");
+    labels.set(contact.prospect_id, {
+      label: name || "Contact",
+      email: contact.email,
+      phone: contact.phone,
+    });
+  }
+
+  return Array.from(labels.entries()).map(([prospect_id, value]) => ({
+    prospect_id,
+    label: value.label,
+    email: value.email,
+    phone: value.phone,
+  }));
+}
+
 export async function getContact(id: string): Promise<ContactWithProspect | null> {
   await requireProfile();
   const supabase = await createClient();
