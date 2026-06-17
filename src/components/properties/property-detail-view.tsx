@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState, useEffect } from "react";
 import { Share2Icon } from "lucide-react";
@@ -22,9 +21,9 @@ import { MetadataPill } from "@/components/layout/metadata-pill";
 import { MobileUtilityBar } from "@/components/layout/mobile-utility-bar";
 import { ResponsivePanel } from "@/components/layout/responsive-panel";
 import { SheetHeader } from "@/components/layout/sheet-header";
-import { UtilityRail, type UtilityPanel } from "@/components/layout/utility-rail";
-import { ArchivePropertyButton } from "@/components/properties/archive-property-button";
+import { UtilityRail } from "@/components/layout/utility-rail";
 import { ManageAccessDialog } from "@/components/properties/manage-access-dialog";
+import { PropertyOverflowMenu } from "@/components/properties/property-overflow-menu";
 import {
   PropertyBreadcrumb,
   PropertyDetailTabs,
@@ -32,11 +31,11 @@ import {
 } from "@/components/properties/property-detail-tabs";
 import { PropertyProspectsGrid } from "@/components/properties/property-prospects-grid";
 import { SharePropertyDialog } from "@/components/properties/share-property-dialog";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { NotesSection } from "@/components/notes/notes-section";
+import { SharedWithSummary } from "@/components/properties/shared-with-summary";
+import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-media-query";
+import { useWorkspacePanel } from "@/hooks/use-workspace-panel";
 import type { ProspectIndicatorCounts } from "@/lib/prospects/indicators";
-import { cn } from "@/lib/utils";
 import {
   canArchiveProperty,
   canEditProperty,
@@ -63,7 +62,7 @@ export type PropertySheetMeta = {
 };
 
 function parseTab(value: string | null): PropertyDetailTab {
-  if (value === "details" || value === "activity") return value;
+  if (value === "details") return "details";
   return "grid";
 }
 
@@ -100,36 +99,35 @@ export function PropertyDetailView({
   const tab = parseTab(searchParams.get("tab"));
   const isMobile = useIsMobile();
 
-  const [activePanel, setActivePanel] = useState<UtilityPanel | null>("attachments");
+  const { activePanel, setActivePanel, togglePanel, closePanel } = useWorkspacePanel();
   const [selectedProspectId, setSelectedProspectId] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
+  const [uploadRequest, setUploadRequest] = useState(0);
 
   const canManage = canManageAssignments(profile);
   const isActive = property.status === "active";
   const location = [property.address, property.city, property.state].filter(Boolean).join(", ");
+  const canEdit = canEditProperty(profile);
+  const canArchive = canArchiveProperty(profile);
+
+  const selectedProspect = useMemo(
+    () => prospects.find((prospect) => prospect.id === selectedProspectId) ?? null,
+    [prospects, selectedProspectId],
+  );
 
   const selectedRowLabel = useMemo(() => {
-    if (!selectedProspectId) return null;
+    if (!selectedProspect) return null;
     const index = prospects.findIndex((prospect) => prospect.id === selectedProspectId);
-    const prospect = prospects[index];
-    if (!prospect || index < 0) return null;
-    return `Row ${index + 1}: ${prospect.company_name}`;
-  }, [prospects, selectedProspectId]);
+    if (index < 0) return null;
+    return `Row ${index + 1}: ${selectedProspect.company_name}`;
+  }, [prospects, selectedProspect, selectedProspectId]);
 
   useEffect(() => {
     if (selectedProspectId) {
       setActivePanel("attachments");
     }
-  }, [selectedProspectId]);
-
-  function togglePanel(panel: UtilityPanel) {
-    setActivePanel((current) => (current === panel ? null : panel));
-  }
-
-  function closePanel() {
-    setActivePanel(null);
-  }
+  }, [selectedProspectId, setActivePanel]);
 
   const attachmentProps = {
     propertyId: property.id,
@@ -139,9 +137,11 @@ export function PropertyDetailView({
     profile,
     canUpload: canUpload && isActive,
     selectedProspectId,
+    selectedProspectName: selectedProspect?.company_name ?? null,
     selectedRowLabel,
     onClose: closePanel,
     variant: "property" as const,
+    uploadRequest,
   };
 
   function renderPanelContent() {
@@ -149,14 +149,6 @@ export function PropertyDetailView({
 
     if (activePanel === "attachments") {
       return <AttachmentsPanelContent {...attachmentProps} />;
-    }
-
-    if (activePanel === "notes") {
-      return (
-        <SidePanelContent title="Notes" onClose={closePanel}>
-          <NotesSection notes={notes} profile={profile} propertyId={property.id} />
-        </SidePanelContent>
-      );
     }
 
     if (activePanel === "activity") {
@@ -210,14 +202,6 @@ export function PropertyDetailView({
 
     if (activePanel === "attachments") {
       return <AttachmentsPanel {...attachmentProps} />;
-    }
-
-    if (activePanel === "notes") {
-      return (
-        <SidePanel title="Notes" onClose={closePanel}>
-          <NotesSection notes={notes} profile={profile} propertyId={property.id} />
-        </SidePanel>
-      );
     }
 
     if (activePanel === "activity") {
@@ -292,14 +276,6 @@ export function PropertyDetailView({
       );
     }
 
-    if (tab === "activity") {
-      return (
-        <div className="p-2">
-          <CompactActivityFeed activities={activities} />
-        </div>
-      );
-    }
-
     return (
       <PropertyProspectsGrid
         prospects={prospects}
@@ -307,10 +283,15 @@ export function PropertyDetailView({
         indicators={indicators}
         selectedProspectId={selectedProspectId}
         onSelectProspect={setSelectedProspectId}
-        canAddProspect={canEditProperty(profile) && isActive}
+        canAddProspect={canEdit && isActive}
         propertyId={property.id}
       />
     );
+  }
+
+  function openUploadFlow() {
+    setActivePanel("attachments");
+    setUploadRequest((current) => current + 1);
   }
 
   return (
@@ -325,9 +306,9 @@ export function PropertyDetailView({
               subtitle={location || undefined}
               meta={
                 <>
-                  <MetadataPill value={meta.prospectCount} label="Prospects" />
-                  <MetadataPill value={meta.contactCount} label="Contacts" />
-                  <MetadataPill value={meta.documentCount} label="Documents" />
+                  <MetadataPill value={meta.prospectCount} label="Prospects on Sheet" />
+                  <MetadataPill value={meta.contactCount} label="Contacts on Sheet" />
+                  <MetadataPill value={meta.documentCount} label="Documents on Sheet" />
                   {canManage && (
                     <MetadataPill value={meta.editorCount} label="Assigned Editors" />
                   )}
@@ -336,23 +317,18 @@ export function PropertyDetailView({
               actions={
                 <div className="flex max-w-full flex-wrap items-center justify-end gap-1.5">
                   {canManage && isActive && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="btn-share gap-1.5 px-3"
-                      onClick={() => setShareOpen(true)}
-                    >
-                      <Share2Icon className="size-3.5" />
-                      Share
-                    </Button>
-                  )}
-                  {canEditProperty(profile) && (
-                    <Link
-                      href={`/properties/${property.id}/edit`}
-                      className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-                    >
-                      Edit
-                    </Link>
+                    <div className="flex flex-col items-end gap-0.5">
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="btn-share gap-1.5 px-3"
+                        onClick={() => setShareOpen(true)}
+                      >
+                        <Share2Icon className="size-3.5" />
+                        Share
+                      </Button>
+                      <SharedWithSummary editorCount={meta.editorCount} />
+                    </div>
                   )}
                   {isActive && (
                     <CreateMenu
@@ -360,12 +336,15 @@ export function PropertyDetailView({
                       canCreateContact={canEditContact(profile)}
                       canUploadDocument={canUpload}
                       propertyId={property.id}
-                      onUploadClick={() => setActivePanel("attachments")}
+                      onUploadClick={openUploadFlow}
                     />
                   )}
-                  {canArchiveProperty(profile) && isActive && (
-                    <ArchivePropertyButton propertyId={property.id} propertyName={property.name} />
-                  )}
+                  <PropertyOverflowMenu
+                    propertyId={property.id}
+                    propertyName={property.name}
+                    canEdit={canEdit && isActive}
+                    canArchive={canArchive && isActive}
+                  />
                 </div>
               }
             />

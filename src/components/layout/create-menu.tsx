@@ -34,8 +34,9 @@ export function CreateMenu({
   variant = "default",
   className,
 }: CreateMenuProps) {
+  const showUpload = canUploadDocument && Boolean(onUploadClick);
   const hasAnyAction =
-    canCreateProperty || canCreateProspect || canCreateContact || canUploadDocument;
+    canCreateProperty || canCreateProspect || canCreateContact || showUpload;
 
   if (!hasAnyAction) {
     return null;
@@ -75,12 +76,9 @@ export function CreateMenu({
         {canCreateContact && (
           <DropdownMenuItem render={<Link href={contactHref} />}>Contact</DropdownMenuItem>
         )}
-        {canUploadDocument &&
-          (onUploadClick ? (
-            <DropdownMenuItem onClick={onUploadClick}>Upload Document</DropdownMenuItem>
-          ) : (
-            <DropdownMenuItem render={<Link href="/documents" />}>Upload Document</DropdownMenuItem>
-          ))}
+        {showUpload && (
+          <DropdownMenuItem onClick={onUploadClick}>Upload Document</DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

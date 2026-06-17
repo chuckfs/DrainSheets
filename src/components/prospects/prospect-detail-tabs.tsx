@@ -4,12 +4,11 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 
-export type ProspectDetailTab = "grid" | "details" | "activity";
+export type ProspectDetailTab = "grid" | "details";
 
 const TABS: { id: ProspectDetailTab; label: string }[] = [
   { id: "grid", label: "Grid" },
   { id: "details", label: "Details" },
-  { id: "activity", label: "Activity" },
 ];
 
 export function ProspectDetailTabs({ active }: { active: ProspectDetailTab }) {

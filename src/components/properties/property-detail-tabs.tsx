@@ -4,12 +4,11 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 
-export type PropertyDetailTab = "grid" | "details" | "activity";
+export type PropertyDetailTab = "grid" | "details";
 
 const TABS: { id: PropertyDetailTab; label: string }[] = [
   { id: "grid", label: "Grid" },
   { id: "details", label: "Details" },
-  { id: "activity", label: "Activity" },
 ];
 
 export function PropertyDetailTabs({ active }: { active: PropertyDetailTab }) {

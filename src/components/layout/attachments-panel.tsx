@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { DocumentWithRelations } from "@/actions/documents";
 import type { NoteWithAuthor } from "@/actions/notes";
 import type { ProspectWithProperty } from "@/actions/prospects";
@@ -10,6 +10,11 @@ import { NoteForm } from "@/components/notes/note-form";
 import { NotesList } from "@/components/notes/notes-list";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { canCreateNote } from "@/lib/permissions/note";
 import type { Profile } from "@/types/domain";
@@ -50,9 +55,11 @@ export function AttachmentsPanelContent({
   profile,
   canUpload,
   selectedProspectId,
+  selectedProspectName,
   selectedRowLabel,
   onClose,
   variant = "property",
+  uploadRequest = 0,
 }: {
   propertyId: string;
   documents: DocumentWithRelations[];
@@ -61,9 +68,11 @@ export function AttachmentsPanelContent({
   profile: Profile;
   canUpload: boolean;
   selectedProspectId: string | null;
+  selectedProspectName?: string | null;
   selectedRowLabel?: string | null;
   onClose: () => void;
   variant?: "property" | "prospect";
+  uploadRequest?: number;
 }) {
   const isProspectVariant = variant === "prospect";
   const [scope, setScope] = useState<ScopeTab>(isProspectVariant ? "row" : "all");
@@ -71,12 +80,28 @@ export function AttachmentsPanelContent({
   const [showNoteForm, setShowNoteForm] = useState(false);
   const canCreate = canCreateNote(profile);
 
+  const resolvedProspectName = useMemo(() => {
+    if (selectedProspectName) return selectedProspectName;
+    if (!selectedProspectId) return null;
+    return prospects.find((prospect) => prospect.id === selectedProspectId)?.company_name ?? null;
+  }, [prospects, selectedProspectId, selectedProspectName]);
+
   useEffect(() => {
     if (isProspectVariant) return;
     if (selectedProspectId) {
       setScope("row");
     }
   }, [selectedProspectId, isProspectVariant]);
+
+  useEffect(() => {
+    if (uploadRequest <= 0) return;
+    setShowUpload(true);
+    if (isProspectVariant || selectedProspectId) {
+      setScope("row");
+    } else {
+      setScope("sheet");
+    }
+  }, [uploadRequest, isProspectVariant, selectedProspectId]);
 
   const scopedDocuments = isProspectVariant
     ? documents
@@ -92,6 +117,14 @@ export function AttachmentsPanelContent({
         ? null
         : selectedProspectId;
 
+  const showRowEmptyState = !isProspectVariant && !selectedProspectId && scope === "row";
+
+  function openAttachToRow() {
+    setScope("row");
+    setShowUpload(true);
+    setShowNoteForm(false);
+  }
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex items-center justify-between border-b px-3 py-2">
@@ -106,23 +139,62 @@ export function AttachmentsPanelContent({
         </Button>
       </div>
 
+      {!isProspectVariant && selectedProspectId && resolvedProspectName && canUpload && (
+        <div className="border-b px-2 py-2">
+          <Button type="button" size="sm" className="btn-share h-8 w-full text-xs" onClick={openAttachToRow}>
+            Attach to {resolvedProspectName}
+          </Button>
+        </div>
+      )}
+
       <Tabs
         value={isProspectVariant ? "row" : scope}
         onValueChange={(value) => setScope(value as ScopeTab)}
         className="flex min-h-0 flex-1 flex-col gap-0"
       >
         {!isProspectVariant && (
-          <TabsList variant="line" className="h-8 w-full justify-start rounded-none border-b px-2">
-            <TabsTrigger value="row" className="text-xs" disabled={!selectedProspectId}>
-              Row
-            </TabsTrigger>
-            <TabsTrigger value="sheet" className="text-xs">
-              Sheet
-            </TabsTrigger>
-            <TabsTrigger value="all" className="text-xs">
-              All
-            </TabsTrigger>
-          </TabsList>
+          <>
+            <TabsList variant="line" className="h-8 w-full justify-start rounded-none border-b px-2">
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <span className="inline-flex">
+                      <TabsTrigger value="row" className="text-xs" disabled={!selectedProspectId}>
+                        Row
+                      </TabsTrigger>
+                    </span>
+                  }
+                />
+                {!selectedProspectId && (
+                  <TooltipContent>
+                    Choose a row to access row-level files and notes.
+                  </TooltipContent>
+                )}
+              </Tooltip>
+              <TabsTrigger value="sheet" className="text-xs">
+                Sheet
+              </TabsTrigger>
+              <TabsTrigger value="all" className="text-xs">
+                All
+              </TabsTrigger>
+            </TabsList>
+            {!selectedProspectId && (
+              <div className="space-y-2 border-b px-3 py-2">
+                <p className="text-xs text-muted-foreground">
+                  Select a prospect row to view row attachments.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setScope("sheet")}
+                >
+                  View property documents
+                </Button>
+              </div>
+            )}
+          </>
         )}
 
         <div className="flex items-center gap-2 border-b px-2 py-1.5">
@@ -172,33 +244,50 @@ export function AttachmentsPanelContent({
         )}
 
         <TabsContent value={isProspectVariant ? "row" : scope} className="min-h-0 flex-1 overflow-auto p-0">
-          <div className="space-y-3 p-2">
-            <section>
-              <h3 className="mb-1 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Documents ({scopedDocuments.length})
-              </h3>
-              <DocumentsTable
-                documents={scopedDocuments}
-                profile={profile}
-                showProspect={!isProspectVariant && scope === "all"}
-              />
-            </section>
-            <section>
-              <h3 className="mb-1 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Notes ({scopedNotes.length})
-              </h3>
-              {scopedNotes.length === 0 ? (
-                <p className="px-1 py-4 text-center text-xs text-muted-foreground">No notes.</p>
-              ) : (
-                <NotesList
-                  notes={scopedNotes}
+          {showRowEmptyState ? (
+            <div className="flex flex-col items-center gap-3 px-4 py-10 text-center">
+              <p className="text-xs text-muted-foreground">
+                Select a prospect row to see row-level documents and notes.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setScope("sheet")}
+              >
+                View property documents
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3 p-2">
+              <section>
+                <h3 className="mb-1 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Documents ({scopedDocuments.length})
+                </h3>
+                <DocumentsTable
+                  documents={scopedDocuments}
                   profile={profile}
-                  propertyId={propertyId}
-                  prospectId={uploadProspectId}
+                  showProspect={!isProspectVariant && scope === "all"}
                 />
-              )}
-            </section>
-          </div>
+              </section>
+              <section>
+                <h3 className="mb-1 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Notes ({scopedNotes.length})
+                </h3>
+                {scopedNotes.length === 0 ? (
+                  <p className="px-1 py-4 text-center text-xs text-muted-foreground">No notes.</p>
+                ) : (
+                  <NotesList
+                    notes={scopedNotes}
+                    profile={profile}
+                    propertyId={propertyId}
+                    prospectId={uploadProspectId}
+                  />
+                )}
+              </section>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

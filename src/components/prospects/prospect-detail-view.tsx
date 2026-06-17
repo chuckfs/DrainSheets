@@ -20,8 +20,7 @@ import { CreateMenu } from "@/components/layout/create-menu";
 import { MobileUtilityBar } from "@/components/layout/mobile-utility-bar";
 import { ResponsivePanel } from "@/components/layout/responsive-panel";
 import { SheetHeader } from "@/components/layout/sheet-header";
-import { UtilityRail, type UtilityPanel } from "@/components/layout/utility-rail";
-import { NotesSection } from "@/components/notes/notes-section";
+import { UtilityRail } from "@/components/layout/utility-rail";
 import { ProspectContactsGrid } from "@/components/prospects/prospect-contacts-grid";
 import {
   ProspectBreadcrumb,
@@ -31,12 +30,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-media-query";
+import { useWorkspacePanel } from "@/hooks/use-workspace-panel";
 import { canDeleteContact, canEditContact } from "@/lib/permissions/contact";
 import { cn } from "@/lib/utils";
 import type { Profile } from "@/types/domain";
 
 function parseTab(value: string | null): ProspectDetailTab {
-  if (value === "details" || value === "activity") return value;
+  if (value === "details") return "details";
   return "grid";
 }
 
@@ -61,20 +61,13 @@ export function ProspectDetailView({
   const tab = parseTab(searchParams.get("tab"));
   const isMobile = useIsMobile();
 
-  const [activePanel, setActivePanel] = useState<UtilityPanel | null>("attachments");
+  const { activePanel, setActivePanel, togglePanel, closePanel } = useWorkspacePanel();
+  const [uploadRequest, setUploadRequest] = useState(0);
 
   const propertyId = prospect.property_id;
   const propertyName = prospect.properties?.name ?? "Property";
   const canEdit = canEditContact(profile);
   const canDelete = canDeleteContact(profile);
-
-  function togglePanel(panel: UtilityPanel) {
-    setActivePanel((current) => (current === panel ? null : panel));
-  }
-
-  function closePanel() {
-    setActivePanel(null);
-  }
 
   const attachmentProps = {
     propertyId,
@@ -84,29 +77,23 @@ export function ProspectDetailView({
     profile,
     canUpload,
     selectedProspectId: prospect.id,
+    selectedProspectName: prospect.company_name,
     selectedRowLabel: prospect.company_name,
     onClose: closePanel,
     variant: "prospect" as const,
+    uploadRequest,
   };
+
+  function openUploadFlow() {
+    setActivePanel("attachments");
+    setUploadRequest((current) => current + 1);
+  }
 
   function renderPanelContent() {
     if (!activePanel) return null;
 
     if (activePanel === "attachments") {
       return <AttachmentsPanelContent {...attachmentProps} />;
-    }
-
-    if (activePanel === "notes") {
-      return (
-        <SidePanelContent title="Notes" onClose={closePanel}>
-          <NotesSection
-            notes={notes}
-            profile={profile}
-            propertyId={propertyId}
-            prospectId={prospect.id}
-          />
-        </SidePanelContent>
-      );
     }
 
     if (activePanel === "activity") {
@@ -169,19 +156,6 @@ export function ProspectDetailView({
 
     if (activePanel === "attachments") {
       return <AttachmentsPanel {...attachmentProps} />;
-    }
-
-    if (activePanel === "notes") {
-      return (
-        <SidePanel title="Notes" onClose={closePanel}>
-          <NotesSection
-            notes={notes}
-            profile={profile}
-            propertyId={propertyId}
-            prospectId={prospect.id}
-          />
-        </SidePanel>
-      );
     }
 
     if (activePanel === "activity") {
@@ -284,14 +258,6 @@ export function ProspectDetailView({
       );
     }
 
-    if (tab === "activity") {
-      return (
-        <div className="p-2">
-          <CompactActivityFeed activities={activities} />
-        </div>
-      );
-    }
-
     return (
       <ProspectContactsGrid
         contacts={contacts}
@@ -329,7 +295,7 @@ export function ProspectDetailView({
                     canUploadDocument={canUpload}
                     propertyId={propertyId}
                     prospectId={prospect.id}
-                    onUploadClick={() => setActivePanel("attachments")}
+                    onUploadClick={openUploadFlow}
                   />
                   {canEdit && (
                     <Link

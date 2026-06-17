@@ -1,19 +1,13 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
-import {
-  ActivityIcon,
-  InfoIcon,
-  PaperclipIcon,
-  StickyNoteIcon,
-} from "lucide-react";
+import { ActivityIcon, InfoIcon, PaperclipIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type UtilityPanel = "attachments" | "notes" | "activity" | "details";
+export type UtilityPanel = "attachments" | "activity" | "details";
 
 const PANEL_ITEMS: { id: UtilityPanel; label: string; icon: LucideIcon }[] = [
   { id: "attachments", label: "Attachments", icon: PaperclipIcon },
-  { id: "notes", label: "Notes", icon: StickyNoteIcon },
   { id: "activity", label: "Activity", icon: ActivityIcon },
   { id: "details", label: "Details", icon: InfoIcon },
 ];
