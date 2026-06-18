@@ -320,10 +320,17 @@ function normalizeDocumentRow(row: Record<string, unknown>): DocumentWithRelatio
   };
 }
 
-export async function generateDownloadUrl(
+type DocumentSignedUrlRow = {
+  id: string;
+  file_path: string;
+  file_name: string;
+  property_id: string;
+  prospect_id: string | null;
+};
+
+async function getDocumentForSignedUrl(
   documentId: string,
-): Promise<ActionResult<{ url: string }>> {
-  const profile = await requireProfile();
+): Promise<ActionResult<DocumentSignedUrlRow>> {
   const supabase = await createClient();
 
   const { data: document, error } = await supabase
@@ -340,12 +347,60 @@ export async function generateDownloadUrl(
     return actionError("Document not found");
   }
 
+  return actionSuccess(document);
+}
+
+async function createDocumentSignedUrl(
+  filePath: string,
+  options: { download?: string | boolean },
+): Promise<ActionResult<{ url: string }>> {
+  const supabase = await createClient();
+
   const { data: signed, error: signError } = await supabase.storage
     .from("documents")
-    .createSignedUrl(document.file_path, SIGNED_URL_EXPIRY_SECONDS);
+    .createSignedUrl(filePath, SIGNED_URL_EXPIRY_SECONDS, {
+      download: options.download ?? false,
+    });
 
   if (signError || !signed?.signedUrl) {
-    return actionError(signError?.message ?? "Failed to generate download URL");
+    return actionError(signError?.message ?? "Failed to generate signed URL");
+  }
+
+  return actionSuccess({ url: signed.signedUrl });
+}
+
+export async function generatePreviewUrl(
+  documentId: string,
+): Promise<ActionResult<{ url: string }>> {
+  await requireProfile();
+
+  const documentResult = await getDocumentForSignedUrl(documentId);
+  if (!documentResult.success || !documentResult.data) {
+    return actionError("error" in documentResult ? documentResult.error : "Document not found");
+  }
+
+  return createDocumentSignedUrl(documentResult.data.file_path, { download: false });
+}
+
+export async function generateDownloadUrl(
+  documentId: string,
+): Promise<ActionResult<{ url: string }>> {
+  const profile = await requireProfile();
+
+  const documentResult = await getDocumentForSignedUrl(documentId);
+  if (!documentResult.success || !documentResult.data) {
+    return actionError("error" in documentResult ? documentResult.error : "Document not found");
+  }
+
+  const document = documentResult.data;
+  const signedResult = await createDocumentSignedUrl(document.file_path, {
+    download: document.file_name,
+  });
+
+  if (!signedResult.success || !signedResult.data) {
+    return actionError(
+      "error" in signedResult ? signedResult.error : "Failed to generate download URL",
+    );
   }
 
   await logActivity({
@@ -361,7 +416,33 @@ export async function generateDownloadUrl(
     },
   });
 
-  return actionSuccess({ url: signed.signedUrl });
+  return signedResult;
+}
+
+export async function logDocumentViewed(documentId: string): Promise<ActionResult> {
+  const profile = await requireProfile();
+
+  const documentResult = await getDocumentForSignedUrl(documentId);
+  if (!documentResult.success || !documentResult.data) {
+    return actionError("error" in documentResult ? documentResult.error : "Document not found");
+  }
+
+  const document = documentResult.data;
+
+  await logActivity({
+    orgId: profile.org_id,
+    userId: profile.id,
+    entityType: "document",
+    entityId: document.id,
+    propertyId: document.property_id,
+    action: "viewed",
+    metadata: {
+      file_name: document.file_name,
+      prospect_id: document.prospect_id,
+    },
+  });
+
+  return { success: true };
 }
 
 export async function deleteDocument(documentId: string): Promise<ActionResult> {

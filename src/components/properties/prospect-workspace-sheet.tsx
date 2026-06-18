@@ -7,7 +7,7 @@ import { listContacts } from "@/actions/contacts";
 import type { DocumentWithRelations } from "@/actions/documents";
 import type { NoteWithAuthor } from "@/actions/notes";
 import type { ProspectWithProperty } from "@/actions/prospects";
-import { CompactDocumentsList } from "@/components/documents/compact-documents-list";
+import { CompactDocumentsListWithPreview } from "@/components/documents/compact-documents-list-with-preview";
 import { CompactNotesList } from "@/components/notes/compact-notes-list";
 import { QuickNoteForm } from "@/components/notes/quick-note-form";
 import { contactDisplayName } from "@/lib/contacts/display";
@@ -221,7 +221,7 @@ export function ProspectWorkspaceSheet({
             <h3 className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Documents
             </h3>
-            <CompactDocumentsList documents={prospectDocuments} profile={profile} />
+            <CompactDocumentsListWithPreview documents={prospectDocuments} profile={profile} />
           </section>
 
           <section>

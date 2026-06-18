@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { PaperclipIcon } from "lucide-react";
 import type { DocumentWithRelations } from "@/actions/documents";
@@ -15,19 +17,20 @@ import {
   SmartsheetGridHeader,
   SmartsheetGridRow,
 } from "@/components/data/smartsheet-grid";
+import { cn } from "@/lib/utils";
 
 export function DocumentsTable({
   documents,
   profile,
   showProperty = false,
   showProspect = false,
-  showView = false,
+  onOpenPreview,
 }: {
   documents: DocumentWithRelations[];
   profile: Profile;
   showProperty?: boolean;
   showProspect?: boolean;
-  showView?: boolean;
+  onOpenPreview?: (document: DocumentWithRelations) => void;
 }) {
   if (documents.length === 0) {
     return <SmartsheetGridEmpty message="No documents found." />;
@@ -55,15 +58,21 @@ export function DocumentsTable({
               <PaperclipIcon className="mx-auto size-3.5 text-sheet-icon" aria-hidden />
             </SmartsheetGridCell>
             <SmartsheetGridCell className="max-w-[240px] truncate font-medium">
-              {showView ? (
-                <Link
-                  href={`/documents/${document.id}`}
-                  className="text-link hover:underline"
+              {onOpenPreview ? (
+                <button
+                  type="button"
+                  onClick={() => onOpenPreview(document)}
+                  className={cn(
+                    "max-w-full truncate text-left text-link hover:underline",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  )}
                 >
                   {document.file_name}
-                </Link>
+                </button>
               ) : (
-                document.file_name
+                <Link href={`/documents/${document.id}`} className="text-link hover:underline">
+                  {document.file_name}
+                </Link>
               )}
             </SmartsheetGridCell>
             <SmartsheetGridCell className="text-muted-foreground">
@@ -111,7 +120,7 @@ export function DocumentsTable({
                 documentId={document.id}
                 fileName={document.file_name}
                 canDelete={canDeleteDocument(profile, document)}
-                showView={showView}
+                onOpenPreview={onOpenPreview ? () => onOpenPreview(document) : undefined}
               />
             </SmartsheetGridCell>
           </SmartsheetGridRow>

@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import type { DocumentWithRelations } from "@/actions/documents";
 import type { NoteWithAuthor } from "@/actions/notes";
 import type { ProspectWithProperty } from "@/actions/prospects";
+import { CompactDocumentsListWithPreview } from "@/components/documents/compact-documents-list-with-preview";
 import { DocumentUploadForm } from "@/components/documents/document-upload-form";
-import { CompactDocumentsList } from "@/components/documents/compact-documents-list";
 import { CompactNotesList } from "@/components/notes/compact-notes-list";
 import { QuickNoteForm } from "@/components/notes/quick-note-form";
 import { RowContextHeader } from "@/components/properties/row-context-header";
@@ -262,7 +262,10 @@ export function AttachmentsPanelContent({
                 <h3 className="mb-1 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Documents ({scopedDocuments.length})
                 </h3>
-                <CompactDocumentsList documents={scopedDocuments} profile={profile} />
+                <CompactDocumentsListWithPreview
+                  documents={scopedDocuments}
+                  profile={profile}
+                />
               </section>
               <section>
                 <h3 className="mb-1 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">

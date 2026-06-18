@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { listDocuments } from "@/actions/documents";
 import { DocumentsGridToolbar } from "@/components/documents/documents-grid-toolbar";
-import { DocumentsTable } from "@/components/documents/documents-table";
+import { DocumentsListWithPreview } from "@/components/documents/documents-list-with-preview";
 import { SheetHeader } from "@/components/layout/sheet-header";
 import { ListPageShell } from "@/components/layout/list-page-shell";
 import { requireProfile } from "@/lib/auth/guards";
@@ -41,12 +41,11 @@ export default async function DocumentsPage({
         </Suspense>
       }
     >
-      <DocumentsTable
+      <DocumentsListWithPreview
         documents={documents}
         profile={profile}
         showProperty
         showProspect
-        showView
       />
     </ListPageShell>
   );

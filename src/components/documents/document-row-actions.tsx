@@ -19,12 +19,12 @@ export function DocumentRowActions({
   documentId,
   fileName,
   canDelete,
-  showView = false,
+  onOpenPreview,
 }: {
   documentId: string;
   fileName: string;
   canDelete: boolean;
-  showView?: boolean;
+  onOpenPreview?: () => void;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -80,11 +80,10 @@ export function DocumentRowActions({
         }
       />
       <DropdownMenuContent align="end" className="w-40">
-        {showView && (
-          <DropdownMenuItem render={<Link href={`/documents/${documentId}`} />}>
-            View
-          </DropdownMenuItem>
-        )}
+        {onOpenPreview && <DropdownMenuItem onClick={onOpenPreview}>Preview</DropdownMenuItem>}
+        <DropdownMenuItem render={<Link href={`/documents/${documentId}`} />}>
+          Open details
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={handleDownload}>Download</DropdownMenuItem>
         {canDelete && (
           <>

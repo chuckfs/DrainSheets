@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { DocumentWithRelations } from "@/actions/documents";
 import type { ProspectWithProperty } from "@/actions/prospects";
 import { DocumentUploadForm } from "@/components/documents/document-upload-form";
-import { DocumentsTable } from "@/components/documents/documents-table";
+import { DocumentsListWithPreview } from "@/components/documents/documents-list-with-preview";
 import { Button } from "@/components/ui/button";
 import type { Profile } from "@/types/domain";
 
@@ -42,7 +42,7 @@ export function PropertyDocumentsSection({
         />
       )}
 
-      <DocumentsTable documents={documents} profile={profile} showProspect />
+      <DocumentsListWithPreview documents={documents} profile={profile} showProspect />
     </div>
   );
 }

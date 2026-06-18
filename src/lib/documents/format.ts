@@ -6,6 +6,7 @@ const MIME_LABELS: Record<string, string> = {
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "Excel",
   "image/png": "PNG",
   "image/jpeg": "JPEG",
+  "image/webp": "WEBP",
 };
 
 export function formatFileSize(bytes: number | null | undefined): string {
