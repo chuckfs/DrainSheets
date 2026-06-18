@@ -2,12 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-import { StarIcon } from "lucide-react";
-import type { Property } from "@/types/domain";
-import { getFavoritePropertyIds, getFavoritePropertyNames } from "@/lib/favorites";
+import type { FavoriteProperty } from "@/actions/favorites";
+import type { RecentPropertyView } from "@/actions/recents";
 import { formatRecentOpened } from "@/lib/format-relative-time";
-import { getRecentProperties, type RecentProperty } from "@/lib/recent-properties";
 import {
   SmartsheetGrid,
   SmartsheetGridBody,
@@ -17,12 +14,12 @@ import {
   SmartsheetGridHeader,
   SmartsheetGridRow,
 } from "@/components/data/smartsheet-grid";
-import { cn } from "@/lib/utils";
+import { StarIcon } from "lucide-react";
 
-function FavoritesTable({ properties }: { properties: Property[] }) {
+function FavoritesTable({ favorites }: { favorites: FavoriteProperty[] }) {
   const router = useRouter();
 
-  if (properties.length === 0) return null;
+  if (favorites.length === 0) return null;
 
   return (
     <section className="mb-4">
@@ -38,26 +35,27 @@ function FavoritesTable({ properties }: { properties: Property[] }) {
           </SmartsheetGridRow>
         </SmartsheetGridHeader>
         <SmartsheetGridBody>
-          {properties.map((property) => (
+          {favorites.map((favorite) => (
             <SmartsheetGridRow
-              key={property.id}
+              key={favorite.propertyId}
               className="cursor-pointer"
-              onClick={() => router.push(`/properties/${property.id}`)}
+              onClick={() => router.push(`/properties/${favorite.propertyId}`)}
             >
               <SmartsheetGridCell className="text-center">
                 <StarIcon className="mx-auto size-3.5 fill-amber-400 text-amber-400" aria-hidden />
               </SmartsheetGridCell>
               <SmartsheetGridCell>
                 <Link
-                  href={`/properties/${property.id}`}
+                  href={`/properties/${favorite.propertyId}`}
                   className="font-medium text-link hover:underline"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  {property.name}
+                  {favorite.property.name}
                 </Link>
               </SmartsheetGridCell>
               <SmartsheetGridCell className="text-muted-foreground">
-                {[property.city, property.state].filter(Boolean).join(", ") || "—"}
+                {[favorite.property.city, favorite.property.state].filter(Boolean).join(", ") ||
+                  "—"}
               </SmartsheetGridCell>
             </SmartsheetGridRow>
           ))}
@@ -67,7 +65,7 @@ function FavoritesTable({ properties }: { properties: Property[] }) {
   );
 }
 
-function RecentPropertiesTable({ recents }: { recents: RecentProperty[] }) {
+function RecentPropertiesTable({ recents }: { recents: RecentPropertyView[] }) {
   const router = useRouter();
 
   return (
@@ -88,17 +86,17 @@ function RecentPropertiesTable({ recents }: { recents: RecentProperty[] }) {
           <SmartsheetGridBody>
             {recents.map((entry) => (
               <SmartsheetGridRow
-                key={entry.id}
+                key={entry.propertyId}
                 className="cursor-pointer"
-                onClick={() => router.push(`/properties/${entry.id}`)}
+                onClick={() => router.push(`/properties/${entry.propertyId}`)}
               >
                 <SmartsheetGridCell>
                   <Link
-                    href={`/properties/${entry.id}`}
+                    href={`/properties/${entry.propertyId}`}
                     className="font-medium text-link hover:underline"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    {entry.name}
+                    {entry.property.name}
                   </Link>
                 </SmartsheetGridCell>
                 <SmartsheetGridCell className="text-muted-foreground">
@@ -113,54 +111,16 @@ function RecentPropertiesTable({ recents }: { recents: RecentProperty[] }) {
   );
 }
 
-export function RecentsPageContent({ properties }: { properties: Property[] }) {
-  const [recents, setRecents] = useState<RecentProperty[]>([]);
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
-  const [hydrated, setHydrated] = useState(false);
-
-  useEffect(() => {
-    setRecents(getRecentProperties());
-    setFavorites(getFavoritePropertyIds());
-    setHydrated(true);
-  }, []);
-
-  const favoriteProperties = useMemo(() => {
-    const byId = new Map(properties.map((property) => [property.id, property]));
-    const names = getFavoritePropertyNames();
-    const recentNames = new Map(recents.map((entry) => [entry.id, entry.name]));
-
-    return [...favorites]
-      .map((id) => {
-        const property = byId.get(id);
-        if (property) return property;
-        const name = names[id] ?? recentNames.get(id);
-        if (!name) return null;
-        return {
-          id,
-          name,
-          address: null,
-          city: null,
-          state: null,
-          description: null,
-          status: "active" as const,
-          created_at: "",
-          updated_at: "",
-          org_id: "",
-          search_vector: null,
-          created_by: null,
-        } satisfies Property;
-      })
-      .filter((property): property is Property => property !== null)
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [favorites, properties, recents]);
-
-  if (!hydrated) {
-    return <div className="min-h-[200px] animate-pulse bg-muted/20" />;
-  }
-
+export function RecentsPageContent({
+  favorites,
+  recents,
+}: {
+  favorites: FavoriteProperty[];
+  recents: RecentPropertyView[];
+}) {
   return (
-    <div className={cn("pb-3")}>
-      {favoriteProperties.length > 0 && <FavoritesTable properties={favoriteProperties} />}
+    <div className="pb-3">
+      <FavoritesTable favorites={favorites} />
       <RecentPropertiesTable recents={recents} />
     </div>
   );

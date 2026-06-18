@@ -166,6 +166,14 @@ export async function teardownRlsFixtures(pool: pg.Pool): Promise<void> {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+    await client.query(`DELETE FROM public.recent_views WHERE property_id IN ($1, $2)`, [
+      FIXTURE.propertyXId,
+      FIXTURE.propertyYId,
+    ]);
+    await client.query(`DELETE FROM public.favorites WHERE property_id IN ($1, $2)`, [
+      FIXTURE.propertyXId,
+      FIXTURE.propertyYId,
+    ]);
     await client.query(`DELETE FROM public.property_assignments WHERE property_id IN ($1, $2)`, [
       FIXTURE.propertyXId,
       FIXTURE.propertyYId,

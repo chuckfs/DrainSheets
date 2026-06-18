@@ -1,18 +1,17 @@
 "use client";
 
 import { useEffect } from "react";
-import { recordRecentProperty } from "@/lib/recent-properties";
+import { trackRecentView } from "@/actions/recents";
 
 export function RecentPropertyTracker({
   propertyId,
-  propertyName,
 }: {
   propertyId: string;
-  propertyName: string;
+  propertyName?: string;
 }) {
   useEffect(() => {
-    recordRecentProperty({ id: propertyId, name: propertyName });
-  }, [propertyId, propertyName]);
+    void trackRecentView(propertyId);
+  }, [propertyId]);
 
   return null;
 }

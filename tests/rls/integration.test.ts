@@ -199,3 +199,70 @@ describe.skipIf(!dbAvailable)("RLS integration — Editor", () => {
     ).rejects.toThrow();
   });
 });
+
+describe.skipIf(!dbAvailable)("RLS integration — Favorites & Recents", () => {
+  it("allows a user to favorite an accessible property", async () => {
+    const result = await asUser(pool, FIXTURE.ownerId, async (client) => {
+      const { rowCount } = await client.query(
+        `INSERT INTO public.favorites (user_id, property_id) VALUES ($1, $2)`,
+        [FIXTURE.ownerId, FIXTURE.propertyXId],
+      );
+      return rowCount;
+    });
+    expect(result).toBe(1);
+  });
+
+  it("prevents favoriting a property the user cannot access", async () => {
+    await expect(
+      asUser(pool, FIXTURE.editorAId, async (client) => {
+        await client.query(
+          `INSERT INTO public.favorites (user_id, property_id) VALUES ($1, $2)`,
+          [FIXTURE.editorAId, FIXTURE.propertyYId],
+        );
+      }),
+    ).rejects.toThrow(/row-level security/i);
+  });
+
+  it("does not expose another user's favorites", async () => {
+    await asUser(pool, FIXTURE.ownerId, async (client) => {
+      await client.query(
+        `INSERT INTO public.favorites (user_id, property_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [FIXTURE.ownerId, FIXTURE.propertyXId],
+      );
+    });
+
+    const count = await asUser(pool, FIXTURE.editorAId, (client) =>
+      countRows(client, "favorites", "property_id = $1", [FIXTURE.propertyXId]),
+    );
+    expect(count).toBe(0);
+  });
+
+  it("allows a user to track a recent view on an accessible property", async () => {
+    const result = await asUser(pool, FIXTURE.editorAId, async (client) => {
+      const { rowCount } = await client.query(
+        `INSERT INTO public.recent_views (user_id, property_id, viewed_at) VALUES ($1, $2, now())`,
+        [FIXTURE.editorAId, FIXTURE.propertyXId],
+      );
+      return rowCount;
+    });
+    expect(result).toBe(1);
+  });
+
+  it("isolates recent views between users", async () => {
+    await asUser(pool, FIXTURE.ownerId, async (client) => {
+      await client.query(
+        `
+        INSERT INTO public.recent_views (user_id, property_id, viewed_at)
+        VALUES ($1, $2, now())
+        ON CONFLICT (user_id, property_id) DO UPDATE SET viewed_at = EXCLUDED.viewed_at
+        `,
+        [FIXTURE.ownerId, FIXTURE.propertyXId],
+      );
+    });
+
+    const count = await asUser(pool, FIXTURE.editorAId, (client) =>
+      countRows(client, "recent_views", "property_id = $1", [FIXTURE.propertyXId]),
+    );
+    expect(count).toBe(0);
+  });
+});

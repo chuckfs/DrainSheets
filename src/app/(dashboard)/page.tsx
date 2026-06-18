@@ -1,4 +1,5 @@
-import { getAssignedProperties } from "@/actions/dashboard";
+import { listFavorites } from "@/actions/favorites";
+import { listRecentViews } from "@/actions/recents";
 import { RecentsPageContent } from "@/components/recents/recents-page-content";
 import { CreateMenu } from "@/components/layout/create-menu";
 import { SheetHeader } from "@/components/layout/sheet-header";
@@ -10,29 +11,12 @@ import {
   canCreateProperty,
   canEditProspect,
 } from "@/lib/permissions/property";
-import type { Property } from "@/types/domain";
-
-function toProperty(entry: Awaited<ReturnType<typeof getAssignedProperties>>[number]): Property {
-  return {
-    id: entry.id,
-    name: entry.name,
-    address: null,
-    city: entry.city,
-    state: entry.state,
-    description: null,
-    status: "active",
-    created_at: entry.updated_at,
-    updated_at: entry.updated_at,
-    org_id: "",
-    search_vector: null,
-    created_by: null,
-  };
-}
 
 export default async function RecentsPage() {
   const profile = await requireProfile();
-  const assignedProperties = await getAssignedProperties();
   const isEditor = profile.role === "editor";
+
+  const [favorites, recents] = await Promise.all([listFavorites(), listRecentViews()]);
 
   return (
     <ListPageShell
@@ -41,8 +25,8 @@ export default async function RecentsPage() {
           title="Recents"
           subtitle={
             isEditor
-              ? "Showing properties assigned to you"
-              : "Recently opened property sheets"
+              ? "Your favorites and recently opened assigned properties"
+              : "Your favorites and recently opened property sheets"
           }
           actions={
             <CreateMenu
@@ -55,7 +39,7 @@ export default async function RecentsPage() {
         />
       }
     >
-      <RecentsPageContent properties={assignedProperties.map(toProperty)} />
+      <RecentsPageContent favorites={favorites} recents={recents} />
     </ListPageShell>
   );
 }
