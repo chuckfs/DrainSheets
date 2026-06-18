@@ -1097,6 +1097,10 @@ export type Database = {
         Args: { check_prospect_id: string }
         Returns: string
       }
+      provision_prospect_list_columns: {
+        Args: { target_org_id: string; target_sheet_id: string }
+        Returns: undefined
+      }
       role_level: {
         Args: { role: Database["public"]["Enums"]["user_role"] }
         Returns: number
@@ -1110,8 +1114,8 @@ export type Database = {
         Returns: {
           entity_id: string
           entity_type: string
-          property_id: string
           rank: number
+          sheet_id: string
           title: string
         }[]
       }
