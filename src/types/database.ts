@@ -44,6 +44,7 @@ export type Database = {
           metadata: Json | null
           org_id: string
           property_id: string | null
+          sheet_id: string | null
           user_id: string | null
         }
         Insert: {
@@ -55,6 +56,7 @@ export type Database = {
           metadata?: Json | null
           org_id: string
           property_id?: string | null
+          sheet_id?: string | null
           user_id?: string | null
         }
         Update: {
@@ -66,6 +68,7 @@ export type Database = {
           metadata?: Json | null
           org_id?: string
           property_id?: string | null
+          sheet_id?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -84,165 +87,14 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "activity_sheet_id_fkey"
+            columns: ["sheet_id"]
+            isOneToOne: false
+            referencedRelation: "sheets"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "activity_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      email_logs: {
-        Row: {
-          attachment_ids: string[]
-          cc_addresses: string[]
-          created_at: string
-          error_message: string | null
-          id: string
-          included_fields: Json
-          layout: string
-          message: string
-          org_id: string
-          property_id: string | null
-          prospect_id: string | null
-          resend_id: string | null
-          sent_by: string
-          status: string
-          subject: string
-          to_addresses: string[]
-        }
-        Insert: {
-          attachment_ids?: string[]
-          cc_addresses?: string[]
-          created_at?: string
-          error_message?: string | null
-          id?: string
-          included_fields?: Json
-          layout?: string
-          message?: string
-          org_id: string
-          property_id?: string | null
-          prospect_id?: string | null
-          resend_id?: string | null
-          sent_by: string
-          status?: string
-          subject: string
-          to_addresses: string[]
-        }
-        Update: {
-          attachment_ids?: string[]
-          cc_addresses?: string[]
-          created_at?: string
-          error_message?: string | null
-          id?: string
-          included_fields?: Json
-          layout?: string
-          message?: string
-          org_id?: string
-          property_id?: string | null
-          prospect_id?: string | null
-          resend_id?: string | null
-          sent_by?: string
-          status?: string
-          subject?: string
-          to_addresses?: string[]
-        }
-        Relationships: [
-          {
-            foreignKeyName: "email_logs_org_id_fkey"
-            columns: ["org_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "email_logs_property_id_fkey"
-            columns: ["property_id"]
-            isOneToOne: false
-            referencedRelation: "properties"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "email_logs_prospect_id_fkey"
-            columns: ["prospect_id"]
-            isOneToOne: false
-            referencedRelation: "prospects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "email_logs_sent_by_fkey"
-            columns: ["sent_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      favorites: {
-        Row: {
-          created_at: string
-          id: string
-          property_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          property_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          property_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "favorites_property_id_fkey"
-            columns: ["property_id"]
-            isOneToOne: false
-            referencedRelation: "properties"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "favorites_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      recent_views: {
-        Row: {
-          id: string
-          property_id: string
-          user_id: string
-          viewed_at: string
-        }
-        Insert: {
-          id?: string
-          property_id: string
-          user_id: string
-          viewed_at?: string
-        }
-        Update: {
-          id?: string
-          property_id?: string
-          user_id?: string
-          viewed_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "recent_views_property_id_fkey"
-            columns: ["property_id"]
-            isOneToOne: false
-            referencedRelation: "properties"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "recent_views_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -263,6 +115,7 @@ export type Database = {
           org_id: string
           phone: string | null
           prospect_id: string
+          row_id: string
           search_vector: unknown
           title: string | null
           updated_at: string
@@ -280,6 +133,7 @@ export type Database = {
           org_id: string
           phone?: string | null
           prospect_id: string
+          row_id: string
           search_vector?: unknown
           title?: string | null
           updated_at?: string
@@ -297,6 +151,7 @@ export type Database = {
           org_id?: string
           phone?: string | null
           prospect_id?: string
+          row_id?: string
           search_vector?: unknown
           title?: string | null
           updated_at?: string
@@ -325,6 +180,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "contacts_row_id_fkey"
+            columns: ["row_id"]
+            isOneToOne: false
+            referencedRelation: "rows"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "contacts_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
@@ -344,7 +206,9 @@ export type Database = {
           org_id: string
           property_id: string
           prospect_id: string | null
+          row_id: string | null
           search_vector: unknown
+          sheet_id: string
           uploaded_by: string | null
         }
         Insert: {
@@ -357,7 +221,9 @@ export type Database = {
           org_id: string
           property_id: string
           prospect_id?: string | null
+          row_id?: string | null
           search_vector?: unknown
+          sheet_id: string
           uploaded_by?: string | null
         }
         Update: {
@@ -370,7 +236,9 @@ export type Database = {
           org_id?: string
           property_id?: string
           prospect_id?: string | null
+          row_id?: string | null
           search_vector?: unknown
+          sheet_id?: string
           uploaded_by?: string | null
         }
         Relationships: [
@@ -396,8 +264,174 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "documents_row_id_fkey"
+            columns: ["row_id"]
+            isOneToOne: false
+            referencedRelation: "rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_sheet_id_fkey"
+            columns: ["sheet_id"]
+            isOneToOne: false
+            referencedRelation: "sheets"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "documents_uploaded_by_fkey"
             columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_logs: {
+        Row: {
+          attachment_ids: string[]
+          cc_addresses: string[]
+          created_at: string
+          error_message: string | null
+          id: string
+          included_fields: Json
+          layout: string
+          message: string
+          org_id: string
+          property_id: string | null
+          prospect_id: string | null
+          resend_id: string | null
+          row_id: string | null
+          sent_by: string
+          sheet_id: string | null
+          status: string
+          subject: string
+          to_addresses: string[]
+        }
+        Insert: {
+          attachment_ids?: string[]
+          cc_addresses?: string[]
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          included_fields?: Json
+          layout?: string
+          message?: string
+          org_id: string
+          property_id?: string | null
+          prospect_id?: string | null
+          resend_id?: string | null
+          row_id?: string | null
+          sent_by: string
+          sheet_id?: string | null
+          status?: string
+          subject: string
+          to_addresses: string[]
+        }
+        Update: {
+          attachment_ids?: string[]
+          cc_addresses?: string[]
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          included_fields?: Json
+          layout?: string
+          message?: string
+          org_id?: string
+          property_id?: string | null
+          prospect_id?: string | null
+          resend_id?: string | null
+          row_id?: string | null
+          sent_by?: string
+          sheet_id?: string | null
+          status?: string
+          subject?: string
+          to_addresses?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_logs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_logs_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_logs_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "prospects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_logs_row_id_fkey"
+            columns: ["row_id"]
+            isOneToOne: false
+            referencedRelation: "rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_logs_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_logs_sheet_id_fkey"
+            columns: ["sheet_id"]
+            isOneToOne: false
+            referencedRelation: "sheets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      favorites: {
+        Row: {
+          created_at: string
+          id: string
+          property_id: string
+          sheet_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          property_id: string
+          sheet_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          property_id?: string
+          sheet_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "favorites_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "favorites_sheet_id_fkey"
+            columns: ["sheet_id"]
+            isOneToOne: false
+            referencedRelation: "sheets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "favorites_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -463,7 +497,9 @@ export type Database = {
           org_id: string
           property_id: string
           prospect_id: string | null
+          row_id: string | null
           search_vector: unknown
+          sheet_id: string
           updated_at: string
           user_id: string
         }
@@ -474,7 +510,9 @@ export type Database = {
           org_id: string
           property_id: string
           prospect_id?: string | null
+          row_id?: string | null
           search_vector?: unknown
+          sheet_id: string
           updated_at?: string
           user_id: string
         }
@@ -485,7 +523,9 @@ export type Database = {
           org_id?: string
           property_id?: string
           prospect_id?: string | null
+          row_id?: string | null
           search_vector?: unknown
+          sheet_id?: string
           updated_at?: string
           user_id?: string
         }
@@ -509,6 +549,20 @@ export type Database = {
             columns: ["prospect_id"]
             isOneToOne: false
             referencedRelation: "prospects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notes_row_id_fkey"
+            columns: ["row_id"]
+            isOneToOne: false
+            referencedRelation: "rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notes_sheet_id_fkey"
+            columns: ["sheet_id"]
+            isOneToOne: false
+            referencedRelation: "sheets"
             referencedColumns: ["id"]
           },
           {
@@ -722,6 +776,278 @@ export type Database = {
           },
         ]
       }
+      recent_views: {
+        Row: {
+          id: string
+          property_id: string
+          sheet_id: string
+          user_id: string
+          viewed_at: string
+        }
+        Insert: {
+          id?: string
+          property_id: string
+          sheet_id: string
+          user_id: string
+          viewed_at?: string
+        }
+        Update: {
+          id?: string
+          property_id?: string
+          sheet_id?: string
+          user_id?: string
+          viewed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recent_views_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recent_views_sheet_id_fkey"
+            columns: ["sheet_id"]
+            isOneToOne: false
+            referencedRelation: "sheets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recent_views_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rows: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data: Json
+          id: string
+          org_id: string
+          position: number
+          search_vector: unknown
+          sheet_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data?: Json
+          id?: string
+          org_id: string
+          position: number
+          search_vector?: unknown
+          sheet_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data?: Json
+          id?: string
+          org_id?: string
+          position?: number
+          search_vector?: unknown
+          sheet_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rows_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rows_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rows_sheet_id_fkey"
+            columns: ["sheet_id"]
+            isOneToOne: false
+            referencedRelation: "sheets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sheet_assignments: {
+        Row: {
+          assigned_at: string
+          id: string
+          sheet_id: string
+          user_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          id?: string
+          sheet_id: string
+          user_id: string
+        }
+        Update: {
+          assigned_at?: string
+          id?: string
+          sheet_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sheet_assignments_sheet_id_fkey"
+            columns: ["sheet_id"]
+            isOneToOne: false
+            referencedRelation: "sheets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sheet_assignments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sheet_columns: {
+        Row: {
+          config: Json
+          created_at: string
+          id: string
+          is_pinned: boolean
+          is_primary: boolean
+          key: string
+          label: string
+          org_id: string
+          position: number
+          sheet_id: string
+          type: Database["public"]["Enums"]["column_type"]
+          updated_at: string
+          width: number | null
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          id?: string
+          is_pinned?: boolean
+          is_primary?: boolean
+          key: string
+          label: string
+          org_id: string
+          position: number
+          sheet_id: string
+          type: Database["public"]["Enums"]["column_type"]
+          updated_at?: string
+          width?: number | null
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          id?: string
+          is_pinned?: boolean
+          is_primary?: boolean
+          key?: string
+          label?: string
+          org_id?: string
+          position?: number
+          sheet_id?: string
+          type?: Database["public"]["Enums"]["column_type"]
+          updated_at?: string
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sheet_columns_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sheet_columns_sheet_id_fkey"
+            columns: ["sheet_id"]
+            isOneToOne: false
+            referencedRelation: "sheets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sheets: {
+        Row: {
+          address: string | null
+          city: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          folder_id: string | null
+          id: string
+          name: string
+          org_id: string
+          search_vector: unknown
+          state: string | null
+          status: Database["public"]["Enums"]["sheet_status"]
+          template_key: string | null
+          updated_at: string
+          workspace_id: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          folder_id?: string | null
+          id?: string
+          name: string
+          org_id: string
+          search_vector?: unknown
+          state?: string | null
+          status?: Database["public"]["Enums"]["sheet_status"]
+          template_key?: string | null
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          folder_id?: string | null
+          id?: string
+          name?: string
+          org_id?: string
+          search_vector?: unknown
+          state?: string | null
+          status?: Database["public"]["Enums"]["sheet_status"]
+          template_key?: string | null
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sheets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sheets_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -731,6 +1057,7 @@ export type Database = {
         Args: { check_property_id: string }
         Returns: boolean
       }
+      can_access_sheet: { Args: { check_sheet_id: string }; Returns: boolean }
       current_profile: {
         Args: never
         Returns: {
@@ -788,8 +1115,25 @@ export type Database = {
           title: string
         }[]
       }
+      sheet_id_for_contact: {
+        Args: { check_contact_id: string }
+        Returns: string
+      }
+      sheet_id_for_row: { Args: { check_row_id: string }; Returns: string }
     }
     Enums: {
+      column_type:
+        | "text"
+        | "long_text"
+        | "number"
+        | "currency"
+        | "date"
+        | "url"
+        | "email"
+        | "phone"
+        | "select"
+        | "checkbox"
+        | "contact"
       property_status: "active" | "archived"
       prospect_status:
         | "researching"
@@ -797,6 +1141,7 @@ export type Database = {
         | "interested"
         | "passed"
         | "closed"
+      sheet_status: "active" | "archived"
       user_role: "owner" | "admin" | "editor"
       user_status: "active" | "invited" | "disabled"
     }
@@ -929,6 +1274,19 @@ export const Constants = {
   },
   public: {
     Enums: {
+      column_type: [
+        "text",
+        "long_text",
+        "number",
+        "currency",
+        "date",
+        "url",
+        "email",
+        "phone",
+        "select",
+        "checkbox",
+        "contact",
+      ],
       property_status: ["active", "archived"],
       prospect_status: [
         "researching",
@@ -937,6 +1295,7 @@ export const Constants = {
         "passed",
         "closed",
       ],
+      sheet_status: ["active", "archived"],
       user_role: ["owner", "admin", "editor"],
       user_status: ["active", "invited", "disabled"],
     },
