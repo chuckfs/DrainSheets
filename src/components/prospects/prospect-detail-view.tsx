@@ -27,13 +27,14 @@ import {
   ProspectDetailTabs,
   type ProspectDetailTab,
 } from "@/components/prospects/prospect-detail-tabs";
+import { SendUpdateButton, SendUpdateDialog } from "@/components/email/send-update-dialog";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-media-query";
 import { useWorkspacePanel } from "@/hooks/use-workspace-panel";
 import { canDeleteContact, canEditContact } from "@/lib/permissions/contact";
 import { cn } from "@/lib/utils";
-import type { Profile } from "@/types/domain";
+import type { Profile, Property } from "@/types/domain";
 
 function parseTab(value: string | null): ProspectDetailTab {
   if (value === "details") return "details";
@@ -42,6 +43,7 @@ function parseTab(value: string | null): ProspectDetailTab {
 
 export function ProspectDetailView({
   prospect,
+  property,
   contacts,
   documents,
   notes,
@@ -50,6 +52,7 @@ export function ProspectDetailView({
   canUpload,
 }: {
   prospect: ProspectWithProperty;
+  property: Pick<Property, "id" | "name" | "address" | "city" | "state" | "description">;
   contacts: ContactWithProspect[];
   documents: DocumentWithRelations[];
   notes: NoteWithAuthor[];
@@ -63,9 +66,10 @@ export function ProspectDetailView({
 
   const { activePanel, setActivePanel, togglePanel, closePanel } = useWorkspacePanel();
   const [uploadRequest, setUploadRequest] = useState(0);
+  const [sendUpdateOpen, setSendUpdateOpen] = useState(false);
 
-  const propertyId = prospect.property_id;
-  const propertyName = prospect.properties?.name ?? "Property";
+  const propertyId = property.id;
+  const propertyName = property.name;
   const canEdit = canEditContact(profile);
   const canDelete = canDeleteContact(profile);
 
@@ -292,6 +296,7 @@ export function ProspectDetailView({
                       {prospect.status}
                     </Badge>
                   )}
+                  <SendUpdateButton onClick={() => setSendUpdateOpen(true)} />
                   <CreateMenu
                     canCreateContact={canEdit}
                     canUploadDocument={canUpload}
@@ -328,6 +333,15 @@ export function ProspectDetailView({
           <div className="flex max-h-[85vh] flex-col overflow-hidden">{renderPanelContent()}</div>
         </ResponsivePanel>
       )}
+
+      <SendUpdateDialog
+        open={sendUpdateOpen}
+        onOpenChange={setSendUpdateOpen}
+        property={property}
+        prospect={prospect}
+        documents={documents}
+        profile={profile}
+      />
     </>
   );
 }

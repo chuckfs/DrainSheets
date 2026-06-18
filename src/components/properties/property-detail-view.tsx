@@ -40,6 +40,7 @@ import {
   MobileProspectActionBar,
 } from "@/components/properties/mobile-prospect-action-bar";
 import { RecentPropertyTracker } from "@/components/recents/recent-property-tracker";
+import { SendUpdateButton, SendUpdateDialog } from "@/components/email/send-update-dialog";
 import { SharePropertyDialog } from "@/components/properties/share-property-dialog";
 import { SharedWithSummary } from "@/components/properties/shared-with-summary";
 import { Button } from "@/components/ui/button";
@@ -115,6 +116,7 @@ export function PropertyDetailView({
   const [workspaceProspectId, setWorkspaceProspectId] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
+  const [sendUpdateOpen, setSendUpdateOpen] = useState(false);
   const [uploadRequest, setUploadRequest] = useState(0);
   const [noteRequest, setNoteRequest] = useState(0);
 
@@ -389,6 +391,9 @@ export function PropertyDetailView({
               }
               actions={
                 <div className="flex max-w-full flex-wrap items-center justify-end gap-1.5">
+                  {isActive && (
+                    <SendUpdateButton onClick={() => setSendUpdateOpen(true)} />
+                  )}
                   {canManage && isActive && (
                     <div className="flex flex-col items-end gap-0.5">
                       <Button
@@ -461,6 +466,17 @@ export function PropertyDetailView({
         onAttachClick={openUploadFlow}
         fullScreen={isMobile}
       />
+
+      {isActive && (
+        <SendUpdateDialog
+          open={sendUpdateOpen}
+          onOpenChange={setSendUpdateOpen}
+          property={property}
+          prospect={selectedProspect}
+          documents={documents}
+          profile={profile}
+        />
+      )}
 
       {canManage && (
         <>

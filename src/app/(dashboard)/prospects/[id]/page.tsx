@@ -4,6 +4,7 @@ import { getPropertyActivity } from "@/actions/activity";
 import { listContacts } from "@/actions/contacts";
 import { getDocumentsForProspect } from "@/actions/documents";
 import { getNotesForProspect } from "@/actions/notes";
+import { getProperty } from "@/actions/properties";
 import { getProspect } from "@/actions/prospects";
 import { ProspectDetailView } from "@/components/prospects/prospect-detail-view";
 import { requireProfile } from "@/lib/auth/guards";
@@ -34,12 +35,17 @@ export default async function ProspectDetailPage({
     notFound();
   }
 
-  const [{ contacts }, documents, notes, propertyActivities] = await Promise.all([
+  const [{ contacts }, documents, notes, propertyActivities, property] = await Promise.all([
     listContacts({ prospectId: id, page: 1 }),
     getDocumentsForProspect(id),
     getNotesForProspect(id),
     getPropertyActivity(prospect.property_id),
+    getProperty(prospect.property_id),
   ]);
+
+  if (!property) {
+    notFound();
+  }
 
   const contactIds = new Set(contacts.map((contact) => contact.id));
   const activities = filterProspectActivities(propertyActivities, id, contactIds);
@@ -48,6 +54,7 @@ export default async function ProspectDetailPage({
     <Suspense fallback={<div className="-m-3 min-h-[calc(100vh-3rem)] animate-pulse bg-muted/20" />}>
       <ProspectDetailView
         prospect={prospect}
+        property={property}
         contacts={contacts}
         documents={documents}
         notes={notes}

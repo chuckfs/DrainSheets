@@ -92,6 +92,92 @@ export type Database = {
           },
         ]
       }
+      email_logs: {
+        Row: {
+          attachment_ids: string[]
+          cc_addresses: string[]
+          created_at: string
+          error_message: string | null
+          id: string
+          included_fields: Json
+          layout: string
+          message: string
+          org_id: string
+          property_id: string | null
+          prospect_id: string | null
+          resend_id: string | null
+          sent_by: string
+          status: string
+          subject: string
+          to_addresses: string[]
+        }
+        Insert: {
+          attachment_ids?: string[]
+          cc_addresses?: string[]
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          included_fields?: Json
+          layout?: string
+          message?: string
+          org_id: string
+          property_id?: string | null
+          prospect_id?: string | null
+          resend_id?: string | null
+          sent_by: string
+          status?: string
+          subject: string
+          to_addresses: string[]
+        }
+        Update: {
+          attachment_ids?: string[]
+          cc_addresses?: string[]
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          included_fields?: Json
+          layout?: string
+          message?: string
+          org_id?: string
+          property_id?: string | null
+          prospect_id?: string | null
+          resend_id?: string | null
+          sent_by?: string
+          status?: string
+          subject?: string
+          to_addresses?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_logs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_logs_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_logs_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "prospects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_logs_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           company: string | null

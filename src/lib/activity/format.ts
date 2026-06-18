@@ -27,12 +27,24 @@ export function formatActivityMessage(activity: ActivityWithProfile): string {
       if (activity.action === "created") return `${user} created Property “${name}”`;
       if (activity.action === "updated") return `${user} updated Property “${name}”`;
       if (activity.action === "archived") return `${user} archived Property “${name}”`;
+      if (activity.action === "email_sent") {
+        const subject = metadataString(meta, "subject");
+        return subject
+          ? `${user} sent an email update for Property “${name}” (${subject})`
+          : `${user} sent an email update for Property “${name}”`;
+      }
       break;
     }
     case "prospect": {
       const name = metadataString(meta, "company_name") ?? "a prospect";
       if (activity.action === "created") return `${user} created Prospect “${name}”`;
       if (activity.action === "updated") return `${user} updated Prospect “${name}”`;
+      if (activity.action === "email_sent") {
+        const subject = metadataString(meta, "subject");
+        return subject
+          ? `${user} sent an email update for “${name}” (${subject})`
+          : `${user} sent an email update for “${name}”`;
+      }
       break;
     }
     case "contact": {
@@ -48,6 +60,7 @@ export function formatActivityMessage(activity: ActivityWithProfile): string {
       const name = metadataString(meta, "file_name") ?? "a document";
       if (activity.action === "uploaded") return `${user} uploaded Document “${name}”`;
       if (activity.action === "downloaded") return `${user} downloaded Document “${name}”`;
+      if (activity.action === "viewed") return `${user} viewed Document “${name}”`;
       if (activity.action === "deleted") return `${user} deleted Document “${name}”`;
       break;
     }
