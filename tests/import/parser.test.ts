@@ -13,9 +13,9 @@ describe("import parser", () => {
       return;
     }
 
-    expect(result.columns).toEqual(["Tenant/Company", "Use", "Website"]);
-    expect(result.rows).toHaveLength(2);
-    expect(result.rows[0]?.["Tenant/Company"]).toBe("Acme Corp");
+    expect(result.data.columns).toEqual(["Tenant/Company", "Use", "Website"]);
+    expect(result.data.rows).toHaveLength(2);
+    expect(result.data.rows[0]?.["Tenant/Company"]).toBe("Acme Corp");
   });
 
   it("parses XLSX workbooks", () => {
@@ -33,8 +33,8 @@ describe("import parser", () => {
       return;
     }
 
-    expect(result.columns).toContain("Property Address");
-    expect(result.rows[0]?.["Property Address"]).toBe("123 Main St");
+    expect(result.data.columns).toContain("Property Address");
+    expect(result.data.rows[0]?.["Property Address"]).toBe("123 Main St");
   });
 
   it("rejects unsupported file types", () => {

@@ -1,72 +1,130 @@
-import Link from "next/link";
 import {
-  groupSearchResults,
   SEARCH_ENTITY_LABELS,
   SEARCH_ENTITY_ORDER,
+  SEARCH_MIN_QUERY_LENGTH,
+  flattenGroupedResults,
+  groupSearchResults,
   searchResultHref,
+  type RecentSheetItem,
   type SearchResult,
 } from "@/lib/search/format";
-import {
-  SmartsheetGrid,
-  SmartsheetGridBody,
-  SmartsheetGridCell,
-  SmartsheetGridEmpty,
-  SmartsheetGridHead,
-  SmartsheetGridHeader,
-  SmartsheetGridRow,
-} from "@/components/data/smartsheet-grid";
+import { RecentSheetItemRow, SearchResultItem } from "./search-result-item";
 
 export function SearchResults({
   query,
   results,
-  total,
+  recentSheets,
+  loading,
+  error,
+  activeIndex,
+  onSelectResult,
+  onSelectRecent,
 }: {
   query: string;
   results: SearchResult[];
-  total: number;
+  recentSheets: RecentSheetItem[];
+  loading: boolean;
+  error: string | null;
+  activeIndex: number;
+  onSelectResult: (result: SearchResult) => void;
+  onSelectRecent: (sheetId: string) => void;
 }) {
-  const grouped = groupSearchResults(results);
-  const hasResults = total > 0;
+  const trimmed = query.trim();
+  const hasQuery = trimmed.length >= SEARCH_MIN_QUERY_LENGTH;
 
-  if (!hasResults) {
-    return <SmartsheetGridEmpty message={`No results found for “${query}”`} />;
+  if (!hasQuery) {
+    if (recentSheets.length === 0) {
+      return (
+        <div className="px-3 py-8 text-center text-sm text-muted-foreground">
+          Type at least {SEARCH_MIN_QUERY_LENGTH} characters to search sheets, rows, contacts, and more.
+        </div>
+      );
+    }
+
+    return (
+      <div className="p-2">
+        <p className="px-2 pb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          Recent sheets
+        </p>
+        <ul className="space-y-0.5">
+          {recentSheets.map((sheet, index) => (
+            <li key={sheet.sheet_id}>
+              <RecentSheetItemRow
+                title={sheet.sheet_name}
+                workspaceName={sheet.workspace_name}
+                active={activeIndex === index}
+                onSelect={() => onSelectRecent(sheet.sheet_id)}
+              />
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
   }
 
+  if (loading) {
+    return <div className="px-3 py-8 text-center text-sm text-muted-foreground">Searching…</div>;
+  }
+
+  if (error) {
+    return <div className="px-3 py-8 text-center text-sm text-destructive">{error}</div>;
+  }
+
+  if (results.length === 0) {
+    return (
+      <div className="px-3 py-8 text-center text-sm text-muted-foreground">
+        No results for “{trimmed}”
+      </div>
+    );
+  }
+
+  const grouped = groupSearchResults(results);
+  const flat = flattenGroupedResults(grouped);
+  let runningIndex = 0;
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 p-2">
       {SEARCH_ENTITY_ORDER.map((entityType) => {
         const items = grouped[entityType];
-        if (items.length === 0) return null;
+        if (items.length === 0) {
+          return null;
+        }
 
-        return (
+        const section = (
           <section key={entityType}>
-            <h2 className="border-x border-t bg-muted/40 px-2 py-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              {SEARCH_ENTITY_LABELS[entityType]} ({items.length})
-            </h2>
-            <SmartsheetGrid className="border-t-0">
-              <SmartsheetGridHeader>
-                <SmartsheetGridRow className="hover:bg-transparent even:bg-transparent">
-                  <SmartsheetGridHead>Name</SmartsheetGridHead>
-                </SmartsheetGridRow>
-              </SmartsheetGridHeader>
-              <SmartsheetGridBody>
-                {items.map((result) => (
-                  <SmartsheetGridRow key={`${result.entity_type}-${result.entity_id}`}>
-                    <SmartsheetGridCell>
-                      <Link
-                        href={searchResultHref(result)}
-                        className="font-medium text-link hover:underline"
-                      >
-                        {result.title}
-                      </Link>
-                    </SmartsheetGridCell>
-                  </SmartsheetGridRow>
-                ))}
-              </SmartsheetGridBody>
-            </SmartsheetGrid>
+            <p className="px-2 pb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              {SEARCH_ENTITY_LABELS[entityType]}
+            </p>
+            <ul className="space-y-0.5">
+              {items.map((result) => {
+                const itemIndex = runningIndex;
+                runningIndex += 1;
+
+                return (
+                  <li key={`${result.entity_type}-${result.entity_id}`}>
+                    <SearchResultItem
+                      title={result.title}
+                      entityType={result.entity_type}
+                      workspaceName={result.workspace_name}
+                      sheetName={result.sheet_name}
+                      query={trimmed}
+                      active={activeIndex === itemIndex}
+                      onSelect={() => onSelectResult(result)}
+                    />
+                  </li>
+                );
+              })}
+            </ul>
           </section>
         );
+
+        return section;
       })}
+      <p className="px-2 text-[11px] text-muted-foreground">
+        {flat.length} result{flat.length === 1 ? "" : "s"}
+      </p>
     </div>
   );
 }
+
+export { searchResultHref };

@@ -1,46 +1,289 @@
+"use client";
+
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { FileSpreadsheetIcon } from "lucide-react";
-import type { Sheet } from "@/types/domain";
+import { useRouter } from "next/navigation";
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  FileSpreadsheetIcon,
+  FolderIcon,
+  FolderPlusIcon,
+  PlusIcon,
+  Share2Icon,
+  UploadIcon,
+} from "lucide-react";
+import type { AccessContext } from "@/lib/access/effective-role";
+import {
+  buildWorkspaceTree,
+  type WorkspaceTreeFolderNode,
+} from "@/lib/templates/template-utils";
+import type { Folder, Sheet } from "@/types/domain";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { ShareDialog } from "@/components/shares/share-dialog";
+import { CreateFolderDialog } from "@/components/workspaces/create-folder-dialog";
+import { CreateSheetDialog } from "@/components/sheets/create-sheet-dialog";
+import { ImportDialog } from "@/components/import/import-dialog";
+
+function FolderNode({
+  node,
+  workspaceId,
+  folders,
+  access,
+  activeSheetId,
+  depth,
+  onRefresh,
+}: {
+  node: WorkspaceTreeFolderNode;
+  workspaceId: string;
+  folders: Folder[];
+  access: AccessContext;
+  activeSheetId?: string;
+  depth: number;
+  onRefresh: () => void;
+}) {
+  const [expanded, setExpanded] = useState(true);
+  const [createSheetOpen, setCreateSheetOpen] = useState(false);
+  const [createFolderOpen, setCreateFolderOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const hasChildren = node.folders.length > 0 || node.sheets.length > 0;
+
+  return (
+    <li>
+      <div
+        className="group flex items-center gap-1 py-1 pr-2 hover:bg-muted/40"
+        style={{ paddingLeft: `${depth * 12 + 8}px` }}
+      >
+        <button
+          type="button"
+          className="flex size-5 shrink-0 items-center justify-center rounded hover:bg-muted"
+          aria-label={expanded ? "Collapse folder" : "Expand folder"}
+          onClick={() => setExpanded((value) => !value)}
+        >
+          {hasChildren ? (
+            expanded ? (
+              <ChevronDownIcon className="size-3.5" />
+            ) : (
+              <ChevronRightIcon className="size-3.5" />
+            )
+          ) : (
+            <span className="size-3.5" />
+          )}
+        </button>
+        <FolderIcon className="size-4 shrink-0 text-muted-foreground" />
+        <span className="min-w-0 flex-1 truncate text-sm">{node.folder.name}</span>
+        {access.canEdit && (
+          <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="size-6"
+              aria-label="New sheet in folder"
+              onClick={() => setCreateSheetOpen(true)}
+            >
+              <PlusIcon className="size-3.5" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="size-6"
+              aria-label="Import into folder"
+              onClick={() => setImportOpen(true)}
+            >
+              <UploadIcon className="size-3.5" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="size-6"
+              aria-label="New subfolder"
+              onClick={() => setCreateFolderOpen(true)}
+            >
+              <FolderPlusIcon className="size-3.5" />
+            </Button>
+          </div>
+        )}
+        {access.canShare && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="size-6 opacity-0 transition-opacity group-hover:opacity-100"
+            aria-label="Share folder"
+            onClick={() => setShareOpen(true)}
+          >
+            <Share2Icon className="size-3.5" />
+          </Button>
+        )}
+      </div>
+
+      {expanded && (
+        <ul>
+          {node.sheets.map((sheet) => (
+            <SheetRow
+              key={sheet.id}
+              sheet={sheet}
+              activeSheetId={activeSheetId}
+              depth={depth + 1}
+            />
+          ))}
+          {node.folders.map((child) => (
+            <FolderNode
+              key={child.folder.id}
+              node={child}
+              workspaceId={workspaceId}
+              folders={folders}
+              access={access}
+              activeSheetId={activeSheetId}
+              depth={depth + 1}
+              onRefresh={onRefresh}
+            />
+          ))}
+        </ul>
+      )}
+
+      <CreateSheetDialog
+        open={createSheetOpen}
+        onOpenChange={setCreateSheetOpen}
+        workspaceId={workspaceId}
+        folderId={node.folder.id}
+        onCreated={onRefresh}
+      />
+      <CreateFolderDialog
+        open={createFolderOpen}
+        onOpenChange={setCreateFolderOpen}
+        workspaceId={workspaceId}
+        folders={folders}
+        parentFolderId={node.folder.id}
+        onCreated={onRefresh}
+      />
+      <ShareDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        resourceType="folder"
+        resourceId={node.folder.id}
+        resourceName={node.folder.name}
+      />
+      <ImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        workspaceId={workspaceId}
+        folderId={node.folder.id}
+        onImported={onRefresh}
+      />
+    </li>
+  );
+}
+
+function SheetRow({
+  sheet,
+  activeSheetId,
+  depth,
+}: {
+  sheet: { id: string; name: string };
+  activeSheetId?: string;
+  depth: number;
+}) {
+  const active = sheet.id === activeSheetId;
+
+  return (
+    <li>
+      <Link
+        href={`/sheets/${sheet.id}`}
+        className={cn(
+          "flex items-center gap-2 py-1.5 pr-3 text-sm transition-colors hover:bg-muted/50",
+          active && "bg-muted font-medium",
+        )}
+        style={{ paddingLeft: `${depth * 12 + 28}px` }}
+        aria-current={active ? "page" : undefined}
+      >
+        <FileSpreadsheetIcon className="size-4 shrink-0 text-muted-foreground" />
+        <span className="truncate">{sheet.name}</span>
+      </Link>
+    </li>
+  );
+}
 
 export function WorkspaceTree({
+  workspaceId,
+  folders,
   sheets,
+  access,
   activeSheetId,
 }: {
+  workspaceId: string;
+  folders: Folder[];
   sheets: Sheet[];
+  access: AccessContext;
   activeSheetId?: string;
 }) {
-  if (sheets.length === 0) {
+  const router = useRouter();
+  const [createSheetOpen, setCreateSheetOpen] = useState(false);
+  const [createFolderOpen, setCreateFolderOpen] = useState(false);
+
+  const tree = useMemo(() => buildWorkspaceTree(folders, sheets), [folders, sheets]);
+
+  function handleRefresh() {
+    router.refresh();
+  }
+
+  const isEmpty = folders.length === 0 && sheets.length === 0;
+
+  if (isEmpty) {
     return (
-      <p className="px-3 py-6 text-sm text-muted-foreground">
-        No sheets in this workspace yet. Run{" "}
-        <code className="rounded bg-muted px-1 py-0.5 text-xs">npm run db:seed-dev</code> to create
-        a sample sheet.
-      </p>
+      <div className="px-3 py-6 text-sm text-muted-foreground">
+        <p>No folders or sheets yet.</p>
+        {access.canEdit && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button type="button" size="sm" variant="outline" onClick={() => setCreateSheetOpen(true)}>
+              Create sheet
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => setCreateFolderOpen(true)}>
+              Create folder
+            </Button>
+          </div>
+        )}
+        <CreateSheetDialog
+          open={createSheetOpen}
+          onOpenChange={setCreateSheetOpen}
+          workspaceId={workspaceId}
+          onCreated={handleRefresh}
+        />
+        <CreateFolderDialog
+          open={createFolderOpen}
+          onOpenChange={setCreateFolderOpen}
+          workspaceId={workspaceId}
+          folders={folders}
+          onCreated={handleRefresh}
+        />
+      </div>
     );
   }
 
   return (
-    <ul className="divide-y border-x border-b">
-      {sheets.map((sheet) => {
-        const active = sheet.id === activeSheetId;
-
-        return (
-          <li key={sheet.id}>
-            <Link
-              href={`/sheets/${sheet.id}`}
-              className={cn(
-                "flex items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-muted/50",
-                active && "bg-muted font-medium",
-              )}
-              aria-current={active ? "page" : undefined}
-            >
-              <FileSpreadsheetIcon className="size-4 shrink-0 text-muted-foreground" />
-              <span className="truncate">{sheet.name}</span>
-            </Link>
-          </li>
-        );
-      })}
-    </ul>
+    <div className="border-x border-b">
+      <ul>
+        {tree.folders.map((node) => (
+          <FolderNode
+            key={node.folder.id}
+            node={node}
+            workspaceId={workspaceId}
+            folders={folders}
+            access={access}
+            activeSheetId={activeSheetId}
+            depth={0}
+            onRefresh={handleRefresh}
+          />
+        ))}
+        {tree.sheets.map((sheet) => (
+          <SheetRow key={sheet.id} sheet={sheet} activeSheetId={activeSheetId} depth={0} />
+        ))}
+      </ul>
+    </div>
   );
 }

@@ -1,7 +1,11 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+import { actionError, actionSuccess, type ActionResult } from "@/lib/action-result";
 import { requireProfile } from "@/lib/auth/guards";
+import { canCreateWorkspace } from "@/lib/permissions/sheet";
 import { createClient } from "@/lib/supabase/server";
+import { createWorkspaceSchema } from "@/lib/validations/workspace";
 import type { Workspace } from "@/types/domain";
 
 export async function listWorkspaces(): Promise<Workspace[]> {
@@ -40,4 +44,45 @@ export async function getWorkspace(workspaceId: string): Promise<Workspace | nul
   }
 
   return data;
+}
+
+export async function createWorkspace(input: {
+  name: string;
+  color?: string | null;
+  icon?: string | null;
+}): Promise<ActionResult<Workspace>> {
+  const profile = await requireProfile();
+
+  if (!canCreateWorkspace(profile)) {
+    return actionError("You do not have permission to create workspaces");
+  }
+
+  const parsed = createWorkspaceSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "Invalid workspace");
+  }
+
+  const supabase = await createClient();
+
+  const { data: workspace, error } = await supabase
+    .from("workspaces")
+    .insert({
+      org_id: profile.org_id,
+      name: parsed.data.name.trim(),
+      color: parsed.data.color ?? null,
+      icon: parsed.data.icon ?? null,
+      created_by: profile.id,
+    })
+    .select("*")
+    .single();
+
+  if (error) {
+    return actionError(error.message);
+  }
+
+  revalidatePath("/");
+  revalidatePath(`/workspaces/${workspace.id}`);
+
+  return actionSuccess(workspace);
 }

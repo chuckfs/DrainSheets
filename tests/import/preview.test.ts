@@ -2,32 +2,29 @@ import { describe, expect, it } from "vitest";
 import { buildImportPreview } from "@/lib/import/preview";
 
 describe("import preview", () => {
-  it("summarizes valid, duplicate, and invalid rows", () => {
+  it("summarizes valid, duplicate, and empty rows", () => {
     const rows = [
-      { "Tenant/Company": "Acme Corp", Use: "Retail", Website: "https://acme.com" },
-      { "Tenant/Company": "Acme Corp", Use: "Retail", Website: "https://acme.com" },
-      { "Tenant/Company": "", Use: "Retail", Website: "bad-url" },
+      { Company: "Acme Corp", Status: "interested" },
+      { Company: "Acme Corp", Status: "interested" },
+      { Company: "", Status: "passed" },
     ];
 
     const mapping = {
-      "Tenant/Company": "company_name" as const,
-      Use: "category" as const,
-      Website: "website" as const,
+      Company: { sourceHeader: "Company", targetKey: "company" },
+      Status: { sourceHeader: "Status", targetKey: "status" },
     };
 
     const preview = buildImportPreview({
-      mode: "prospect",
       rows,
       mapping,
-      template: "tenant_prospect",
-      existingKeys: [],
-      skipDuplicates: true,
+      columnTypes: { company: "text", status: "select" },
+      dedupe: { enabled: true, sourceColumn: "Company" },
     });
 
     expect(preview.totalRows).toBe(3);
-    expect(preview.validRows).toBe(1);
+    expect(preview.validRows).toBe(2);
     expect(preview.duplicateRows).toBe(1);
-    expect(preview.invalidRows).toBe(1);
-    expect(preview.skippedRows).toBe(1);
+    expect(preview.invalidRows).toBe(0);
+    expect(preview.previewRows).toHaveLength(2);
   });
 });

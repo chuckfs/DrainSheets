@@ -3,6 +3,8 @@ import { getWorkspaceAccessContext } from "@/actions/access";
 import { listFolders } from "@/actions/folders";
 import { listSheets } from "@/actions/sheets";
 import { getWorkspace, listWorkspaces } from "@/actions/workspaces";
+import { requireProfile } from "@/lib/auth/guards";
+import { canCreateWorkspace } from "@/lib/permissions/sheet";
 import { WorkspaceTree } from "@/components/browse/workspace-tree";
 import { ListPageShell } from "@/components/layout/list-page-shell";
 import {
@@ -16,6 +18,7 @@ export default async function WorkspacePage({
   params: Promise<{ workspaceId: string }>;
 }) {
   const { workspaceId } = await params;
+  const profile = await requireProfile();
   const [workspace, access, sheets, workspaces, folders] = await Promise.all([
     getWorkspace(workspaceId),
     getWorkspaceAccessContext(workspaceId),
@@ -35,13 +38,19 @@ export default async function WorkspacePage({
           workspace={workspace}
           access={access}
           folders={folders}
+          canCreateWorkspace={canCreateWorkspace(profile)}
           workspaceSwitcher={
             <WorkspaceSwitcher workspaces={workspaces} activeWorkspaceId={workspace.id} />
           }
         />
       }
     >
-      <WorkspaceTree sheets={sheets} />
+      <WorkspaceTree
+        workspaceId={workspaceId}
+        folders={folders}
+        sheets={sheets}
+        access={access}
+      />
     </ListPageShell>
   );
 }

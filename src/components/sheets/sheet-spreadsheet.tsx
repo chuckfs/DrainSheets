@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { getContactsByIds, searchContacts, type ContactPickerItem } from "@/actions/contacts";
 import type { AccessContext } from "@/lib/access/effective-role";
+import type { SheetTemplateProvenance } from "@/actions/templates";
 import { ListPageShell } from "@/components/layout/list-page-shell";
 import type { Json } from "@/types/database";
 import type { Row, Sheet, SheetColumn } from "@/types/domain";
@@ -40,11 +41,13 @@ export function SheetSpreadsheet({
   initialColumns,
   initialRows,
   access,
+  templateProvenance,
 }: {
   sheet: Sheet;
   initialColumns: SheetColumn[];
   initialRows: Row[];
   access: AccessContext;
+  templateProvenance: SheetTemplateProvenance;
 }) {
   const grid = useSheetGrid({
     sheetId: sheet.id,
@@ -100,7 +103,12 @@ export function SheetSpreadsheet({
       <ListPageShell
         header={
           <>
-            <SheetToolbar sheet={sheet} grid={grid} access={access} />
+            <SheetToolbar
+              sheet={sheet}
+              grid={grid}
+              access={access}
+              templateProvenance={templateProvenance}
+            />
             <BulkToolbar grid={grid} />
           </>
         }

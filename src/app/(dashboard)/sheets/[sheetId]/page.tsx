@@ -3,6 +3,9 @@ import { getSheetAccessContext } from "@/actions/access";
 import { listColumns } from "@/actions/columns";
 import { listRows } from "@/actions/rows";
 import { getSheet } from "@/actions/sheets";
+import { trackRecentSheetView } from "@/actions/search";
+import { getSheetTemplateProvenance } from "@/actions/templates";
+import { TrackRecentSheetView } from "@/components/search/track-recent-sheet-view";
 import { SheetView } from "@/components/sheets/sheet-view";
 
 export default async function SheetPage({ params }: { params: Promise<{ sheetId: string }> }) {
@@ -13,7 +16,29 @@ export default async function SheetPage({ params }: { params: Promise<{ sheetId:
     notFound();
   }
 
-  const [columns, rows] = await Promise.all([listColumns(sheetId), listRows(sheetId)]);
+  const [columns, rows, templateProvenance] = await Promise.all([
+    listColumns(sheetId),
+    listRows(sheetId),
+    getSheetTemplateProvenance(sheet),
+  ]);
 
-  return <SheetView sheet={sheet} columns={columns} rows={rows} access={access} />;
+  await trackRecentSheetView(sheetId);
+
+  return (
+    <>
+      <TrackRecentSheetView
+        sheetId={sheet.id}
+        sheetName={sheet.name}
+        workspaceId={sheet.workspace_id}
+        workspaceName={null}
+      />
+      <SheetView
+      sheet={sheet}
+      columns={columns}
+      rows={rows}
+      access={access}
+      templateProvenance={templateProvenance}
+    />
+    </>
+  );
 }

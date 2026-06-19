@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { SheetHeader } from "@/components/layout/sheet-header";
 import { AccessBadge } from "@/components/shares/access-badge";
 import { ShareDialog } from "@/components/shares/share-dialog";
+import type { SheetTemplateProvenance } from "@/actions/templates";
+import { SheetTemplateProvenance as SheetTemplateProvenanceBadge } from "@/components/sheets/sheet-template-provenance";
 import { AddColumnDialog } from "./add-column-dialog";
 import type { SheetGridController } from "./use-sheet-grid";
 
@@ -15,10 +17,12 @@ export function SheetToolbar({
   sheet,
   grid,
   access,
+  templateProvenance,
 }: {
   sheet: Sheet;
   grid: SheetGridController;
   access: AccessContext;
+  templateProvenance: SheetTemplateProvenance;
 }) {
   const [addColumnOpen, setAddColumnOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -33,6 +37,7 @@ export function SheetToolbar({
         meta={
           <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
             <AccessBadge access={access} />
+            <SheetTemplateProvenanceBadge provenance={templateProvenance} />
             <span className="inline-flex items-center gap-1">
               <RowsIcon className="size-3" />
               {grid.rows.length} {grid.rows.length === 1 ? "row" : "rows"}
