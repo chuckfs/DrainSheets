@@ -1,33 +1,24 @@
 import { z } from "zod";
 
 export const EMAIL_LAYOUTS = ["stacked", "table"] as const;
+export type EmailLayout = (typeof EMAIL_LAYOUTS)[number];
 
-export const EMAIL_FIELD_KEYS = [
-  "property_name",
-  "property_location",
-  "property_description",
-  "prospect_company",
-  "prospect_status",
-  "prospect_category",
-  "prospect_website",
-  "prospect_comments",
-  "contacts",
-] as const;
-
-export type EmailFieldKey = (typeof EMAIL_FIELD_KEYS)[number];
-
-const emailAddressSchema = z.string().email("Enter a valid email address");
+const emailAddressSchema = z.string().trim().email("Enter a valid email address");
 
 export const sendQuickUpdateSchema = z.object({
-  propertyId: z.string().uuid(),
-  prospectId: z.string().uuid().nullable().optional(),
-  to: z.array(emailAddressSchema).min(1, "Add at least one recipient"),
-  subject: z.string().min(1, "Subject is required").max(300),
-  message: z.string().max(5000).optional().or(z.literal("")),
-  ccMe: z.boolean(),
-  includedFields: z.array(z.enum(EMAIL_FIELD_KEYS)),
+  sheetId: z.string().uuid(),
+  rowId: z.string().uuid(),
+  to: z
+    .array(emailAddressSchema)
+    .min(1, "Add at least one recipient")
+    .max(25, "Maximum 25 recipients"),
+  subject: z.string().trim().min(1, "Subject is required").max(300),
+  message: z.string().max(5000).optional().default(""),
+  ccMe: z.boolean().default(false),
+  // Column keys from the sheet to include as fields in the email body.
+  includedColumnKeys: z.array(z.string()).max(100),
   attachmentIds: z.array(z.string().uuid()).max(10, "Maximum 10 attachments per email"),
-  layout: z.enum(EMAIL_LAYOUTS),
+  layout: z.enum(EMAIL_LAYOUTS).default("stacked"),
 });
 
 export type SendQuickUpdateInput = z.infer<typeof sendQuickUpdateSchema>;
