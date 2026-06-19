@@ -26,4 +26,15 @@ export const createColumnSchema = z.object({
   position: z.number().int().min(0),
 });
 
-export type CreateColumnInput = z.infer<typeof createColumnSchema>;
+export const updateColumnLabelSchema = z.object({
+  columnId: z.string().uuid(),
+  label: z.string().min(1).max(200),
+});
+
+export const moveColumnSchema = z.object({
+  columnId: z.string().uuid(),
+  direction: z.enum(["left", "right"]),
+});
+
+export type UpdateColumnLabelInput = z.infer<typeof updateColumnLabelSchema>;
+export type MoveColumnInput = z.infer<typeof moveColumnSchema>;
