@@ -1,20 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
+import { isGridEditableTarget, resolveGridKeyboardShortcut } from "@/lib/sheets/grid-keyboard";
 import type { SheetGridController } from "./use-sheet-grid";
-
-function isEditableTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) {
-    return false;
-  }
-
-  if (target.isContentEditable) {
-    return true;
-  }
-
-  const tag = target.tagName;
-  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
-}
 
 export function useSheetKeyboard(
   grid: SheetGridController,
@@ -22,23 +10,28 @@ export function useSheetKeyboard(
 ) {
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (grid.readOnly || isEditableTarget(event.target)) {
+      if (grid.readOnly || isGridEditableTarget(event.target)) {
         return;
       }
 
-      const mod = event.metaKey || event.ctrlKey;
+      const shortcut = resolveGridKeyboardShortcut(event);
+      if (!shortcut) {
+        return;
+      }
 
-      if (mod && event.key.toLowerCase() === "z") {
+      if (shortcut === "undo") {
         event.preventDefault();
-        if (event.shiftKey) {
-          void grid.redo();
-        } else {
-          void grid.undo();
-        }
+        void grid.undo();
         return;
       }
 
-      if (mod && event.key.toLowerCase() === "d") {
+      if (shortcut === "redo") {
+        event.preventDefault();
+        void grid.redo();
+        return;
+      }
+
+      if (shortcut === "fill_down") {
         event.preventDefault();
         void grid.fillDown();
         return;

@@ -42,7 +42,7 @@ export function SheetToolbar({
             <SheetTemplateProvenanceBadge provenance={templateProvenance} />
             <span className="inline-flex items-center gap-1">
               <RowsIcon className="size-3" />
-              {grid.rows.length} {grid.rows.length === 1 ? "row" : "rows"}
+              {grid.totalRowCount} {grid.totalRowCount === 1 ? "row" : "rows"}
             </span>
             <span className="inline-flex items-center gap-1">
               <ColumnsIcon className="size-3" />

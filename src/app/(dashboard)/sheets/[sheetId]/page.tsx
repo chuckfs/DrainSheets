@@ -1,11 +1,12 @@
 import { notFound } from "next/navigation";
 import { getSheetAccessContext } from "@/actions/access";
 import { listColumns } from "@/actions/columns";
-import { listRows } from "@/actions/rows";
+import { countRows, listRowsWindow } from "@/actions/rows";
 import { getSheet } from "@/actions/sheets";
 import { trackRecentSheetView } from "@/actions/search";
 import { getSheetTemplateProvenance } from "@/actions/templates";
 import { requireProfile } from "@/lib/auth/guards";
+import { ROW_WINDOW_SIZE } from "@/lib/sheets/row-window";
 import { TrackRecentSheetView } from "@/components/search/track-recent-sheet-view";
 import { SheetView } from "@/components/sheets/sheet-view";
 
@@ -25,9 +26,10 @@ export default async function SheetPage({
     notFound();
   }
 
-  const [columns, rows, templateProvenance] = await Promise.all([
+  const [columns, initialRows, rowCount, templateProvenance] = await Promise.all([
     listColumns(sheetId),
-    listRows(sheetId),
+    listRowsWindow(sheetId, 0, ROW_WINDOW_SIZE),
+    countRows(sheetId),
     getSheetTemplateProvenance(sheet),
   ]);
 
@@ -44,7 +46,8 @@ export default async function SheetPage({
       <SheetView
         sheet={sheet}
         columns={columns}
-        rows={rows}
+        rows={initialRows}
+        rowCount={rowCount}
         access={access}
         templateProvenance={templateProvenance}
         currentUserId={profile.id}

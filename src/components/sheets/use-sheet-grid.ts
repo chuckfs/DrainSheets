@@ -16,6 +16,7 @@ import {
   createRow,
   deleteRow,
   duplicateRow,
+  listRowsWindow,
   reorderRow,
   updateRow,
 } from "@/actions/rows";
@@ -32,39 +33,53 @@ import {
 } from "@/lib/sheets/selection";
 import { toast } from "sonner";
 import type { NavigateDirection } from "./cell-renderers/types";
+import { buildFillDownUpdates, applyLocalCellUpdatesToSparse, cellValuesEqual, mergeBatchServerUpdates } from "@/lib/sheets/grid-operations";
+import {
+  buildSingleCellHistoryEntry,
+  extractRowData,
+  resolveColumnRenameLabel,
+} from "@/lib/sheets/grid-history";
+import { computeNavigateCoord } from "@/lib/sheets/grid-navigation";
+import {
+  appendSparseRow,
+  computeLoadRange,
+  createSparseRowStore,
+  insertSparseRow,
+  invalidateStoreRange,
+  isRangeLoaded,
+  mergeRowsIntoStore,
+  moveSparseRow,
+  spliceSparseRow,
+} from "@/lib/sheets/row-window";
+import { resolveHistoryCellValue, type CellHistoryEntry } from "@/lib/sheets/sheet-history-stack";
 import { useSheetHistory, type SheetHistoryEntry } from "./use-sheet-history";
 
 export type CellCoord = { rowIndex: number; colIndex: number };
 
 function parseRowData(row: Row): Record<string, Json | undefined> {
-  if (row.data && typeof row.data === "object" && !Array.isArray(row.data)) {
-    return row.data as Record<string, Json | undefined>;
-  }
-
-  return {};
-}
-
-function valuesEqual(a: Json | undefined, b: Json | undefined): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
+  return extractRowData(row);
 }
 
 export function useSheetGrid({
   sheetId,
   initialColumns,
   initialRows,
+  initialRowCount,
   readOnly = false,
 }: {
   sheetId: string;
   initialColumns: SheetColumn[];
   initialRows: Row[];
+  initialRowCount: number;
   readOnly?: boolean;
 }) {
   const [columns, setColumns] = useState(initialColumns);
-  const [rows, setRows] = useState(initialRows);
+  const [rows, setRows] = useState<(Row | null)[]>(() =>
+    createSparseRowStore(initialRowCount, initialRows),
+  );
+  const [totalRowCount, setTotalRowCount] = useState(initialRowCount);
+  const rowsRef = useRef<(Row | null)[]>(rows);
+  const loadingWindowsRef = useRef<Set<number>>(new Set());
   const [selectedCell, setSelectedCell] = useState<CellCoord | null>(null);
   const [selectionRange, setSelectionRange] = useState<CellRange | null>(null);
   const [editingCell, setEditingCell] = useState<CellCoord | null>(null);
@@ -79,12 +94,53 @@ export function useSheetGrid({
   const skipHistoryRef = useRef(false);
 
   useEffect(() => {
+    rowsRef.current = rows;
+  }, [rows]);
+
+  useEffect(() => {
     setColumns(initialColumns);
   }, [initialColumns]);
 
   useEffect(() => {
-    setRows(initialRows);
-  }, [initialRows]);
+    setRows(createSparseRowStore(initialRowCount, initialRows));
+    setTotalRowCount(initialRowCount);
+  }, [initialRowCount, initialRows]);
+
+  const ensureRowsLoaded = useCallback(
+    async (startIndex: number, endIndex: number) => {
+      const range = computeLoadRange(startIndex, endIndex, totalRowCount);
+      if (!range) {
+        return;
+      }
+
+      if (isRangeLoaded(rowsRef.current, range.offset, range.offset + range.limit - 1)) {
+        return;
+      }
+
+      if (loadingWindowsRef.current.has(range.offset)) {
+        return;
+      }
+
+      loadingWindowsRef.current.add(range.offset);
+      try {
+        const fetched = await listRowsWindow(sheetId, range.offset, range.limit);
+        setRows((current) => mergeRowsIntoStore(current, fetched, range.offset));
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Failed to load rows");
+      } finally {
+        loadingWindowsRef.current.delete(range.offset);
+      }
+    },
+    [sheetId, totalRowCount],
+  );
+
+  const refreshRowsRange = useCallback(
+    async (startIndex: number, endIndex: number) => {
+      setRows((current) => invalidateStoreRange(current, startIndex, endIndex));
+      await ensureRowsLoaded(startIndex, endIndex);
+    },
+    [ensureRowsLoaded],
+  );
 
   useEffect(() => {
     function handlePointerUp() {
@@ -134,9 +190,17 @@ export function useSheetGrid({
     [bumpSelectionEpoch, selectedCell],
   );
 
+  const getRowAt = useCallback((rowIndex: number): Row | null => {
+    return rowsRef.current[rowIndex] ?? null;
+  }, []);
+
+  const isRowLoaded = useCallback((rowIndex: number): boolean => {
+    return rowsRef.current[rowIndex] !== null && rowsRef.current[rowIndex] !== undefined;
+  }, []);
+
   const getCellValue = useCallback(
     (rowIndex: number, colIndex: number): Json | undefined => {
-      const row = rows[rowIndex];
+      const row = rowsRef.current[rowIndex];
       const column = columns[colIndex];
       if (!row || !column) {
         return undefined;
@@ -144,7 +208,7 @@ export function useSheetGrid({
 
       return parseRowData(row)[column.key];
     },
-    [columns, rows],
+    [columns],
   );
 
   const isCellSelected = useCallback(
@@ -162,47 +226,20 @@ export function useSheetGrid({
   );
 
   const navigate = useCallback(
-    (direction: NavigateDirection, from?: CellCoord | null, extend = false) => {
-      if (columns.length === 0 || rows.length === 0) {
+    async (direction: NavigateDirection, from?: CellCoord | null, extend = false) => {
+      if (columns.length === 0 || totalRowCount === 0) {
         return;
       }
 
       const base = from ?? selectedCell ?? { rowIndex: 0, colIndex: 0 };
-      let { rowIndex, colIndex } = base;
+      const next = computeNavigateCoord({
+        direction,
+        from: base,
+        rowCount: totalRowCount,
+        columnCount: columns.length,
+      });
 
-      switch (direction) {
-        case "up":
-          rowIndex -= 1;
-          break;
-        case "down":
-          rowIndex += 1;
-          break;
-        case "left":
-          colIndex -= 1;
-          break;
-        case "right":
-          colIndex += 1;
-          break;
-        case "next":
-          colIndex += 1;
-          if (colIndex >= columns.length) {
-            colIndex = 0;
-            rowIndex += 1;
-          }
-          break;
-        case "prev":
-          colIndex -= 1;
-          if (colIndex < 0) {
-            colIndex = columns.length - 1;
-            rowIndex -= 1;
-          }
-          break;
-      }
-
-      const next = {
-        rowIndex: clamp(rowIndex, 0, rows.length - 1),
-        colIndex: clamp(colIndex, 0, columns.length - 1),
-      };
+      await ensureRowsLoaded(next.rowIndex, next.rowIndex);
 
       if (extend) {
         extendSelectionTo(next);
@@ -212,7 +249,14 @@ export function useSheetGrid({
 
       setEditingCell(null);
     },
-    [columns.length, extendSelectionTo, rows.length, selectSingleCell, selectedCell],
+    [
+      columns.length,
+      ensureRowsLoaded,
+      extendSelectionTo,
+      selectSingleCell,
+      selectedCell,
+      totalRowCount,
+    ],
   );
 
   const commitCell = useCallback(
@@ -222,7 +266,7 @@ export function useSheetGrid({
         return;
       }
 
-      const row = rows[rowIndex];
+      const row = rowsRef.current[rowIndex];
       const column = columns[colIndex];
       if (!row || !column || row.id.startsWith("temp-")) {
         setEditingCell(null);
@@ -230,7 +274,7 @@ export function useSheetGrid({
       }
 
       const previous = getCellValue(rowIndex, colIndex);
-      if (valuesEqual(previous, value)) {
+      if (cellValuesEqual(previous, value)) {
         setEditingCell(null);
         return;
       }
@@ -240,7 +284,7 @@ export function useSheetGrid({
 
       setRows((current) =>
         current.map((entry, index) => {
-          if (index !== rowIndex) {
+          if (index !== rowIndex || !entry) {
             return entry;
           }
 
@@ -263,7 +307,7 @@ export function useSheetGrid({
         const rollbackValue = rollbackRef.current.get(rollbackKey);
         setRows((current) =>
           current.map((entry, index) => {
-            if (index !== rowIndex) {
+            if (index !== rowIndex || !entry) {
               return entry;
             }
 
@@ -296,7 +340,7 @@ export function useSheetGrid({
         );
       }
     },
-    [columns, getCellValue, history, readOnly, rows],
+    [columns, getCellValue, history, readOnly],
   );
 
   const commitCellSilent = useCallback(
@@ -317,47 +361,30 @@ export function useSheetGrid({
         return false;
       }
 
-      const serverUpdatesMap = new Map<string, Record<string, Json | undefined>>();
+      const minRow = Math.min(...updates.map((update) => update.rowIndex));
+      const maxRow = Math.max(...updates.map((update) => update.rowIndex));
+      await ensureRowsLoaded(minRow, maxRow);
 
-      for (const update of updates) {
-        const row = rows[update.rowIndex];
-        const column = columns[update.colIndex];
-        if (!row || !column || row.id.startsWith("temp-")) {
-          continue;
-        }
-
-        const existing = serverUpdatesMap.get(row.id) ?? {};
-        existing[column.key] = update.value;
-        serverUpdatesMap.set(row.id, existing);
-      }
-
-      const serverUpdates = [...serverUpdatesMap.entries()].map(([rowId, data]) => ({
-        rowId,
-        data,
-      }));
+      const currentRows = rowsRef.current;
+      const denseRows = currentRows.map((row) => row ?? undefined);
+      const serverUpdates = mergeBatchServerUpdates(updates, denseRows, columns);
 
       if (serverUpdates.length === 0) {
         return false;
       }
 
-      setRows((current) =>
-        current.map((entry, rowIndex) => {
-          const rowUpdates = updates.filter((update) => update.rowIndex === rowIndex);
-          if (rowUpdates.length === 0) {
-            return entry;
-          }
+      let historyEntry: CellHistoryEntry | null = null;
+      if (options?.recordHistory !== false && updates.length === 1) {
+        const only = updates[0]!;
+        historyEntry = buildSingleCellHistoryEntry(
+          only,
+          denseRows,
+          columns,
+          getCellValue(only.rowIndex, only.colIndex),
+        );
+      }
 
-          const nextData = { ...parseRowData(entry) };
-          for (const update of rowUpdates) {
-            const column = columns[update.colIndex];
-            if (column) {
-              nextData[column.key] = update.value;
-            }
-          }
-
-          return { ...entry, data: nextData };
-        }),
-      );
+      setRows((current) => applyLocalCellUpdatesToSparse(current, updates, columns, parseRowData));
 
       const result = await batchUpdateRows(serverUpdates, {
         operation: options?.activityLabel ?? "batch_update",
@@ -369,24 +396,13 @@ export function useSheetGrid({
         return false;
       }
 
-      if (options?.recordHistory !== false && updates.length === 1) {
-        const only = updates[0]!;
-        const row = rows[only.rowIndex];
-        const column = columns[only.colIndex];
-        if (row && column) {
-          history.push({
-            type: "cell",
-            rowId: row.id,
-            columnKey: column.key,
-            before: getCellValue(only.rowIndex, only.colIndex),
-            after: only.value,
-          });
-        }
+      if (historyEntry) {
+        history.push(historyEntry);
       }
 
       return true;
     },
-    [columns, getCellValue, history, readOnly, rows, sheetId],
+    [columns, ensureRowsLoaded, getCellValue, history, readOnly, sheetId],
   );
 
   const addRows = useCallback(
@@ -402,7 +418,8 @@ export function useSheetGrid({
           return false;
         }
 
-        setRows((current) => [...current, result.data!]);
+        setRows((current) => appendSparseRow(current, result.data!));
+        setTotalRowCount((count) => count + 1);
         if (!skipHistoryRef.current) {
           history.push({ type: "row_add", row: result.data });
         }
@@ -418,22 +435,15 @@ export function useSheetGrid({
       return false;
     }
 
-    const { minRow, maxRow, minCol, maxCol } = normalizedSelection ?? normalizeRange(selectionRange);
-    if (maxRow <= minRow) {
+    const range = normalizedSelection ?? normalizeRange(selectionRange);
+    await ensureRowsLoaded(range.minRow, range.maxRow);
+    const updates = buildFillDownUpdates({ range, getValue: getCellValue });
+    if (updates.length === 0) {
       return false;
     }
 
-    const updates: Array<{ rowIndex: number; colIndex: number; value: Json | undefined }> = [];
-
-    for (let colIndex = minCol; colIndex <= maxCol; colIndex += 1) {
-      const sourceValue = getCellValue(minRow, colIndex);
-      for (let rowIndex = minRow + 1; rowIndex <= maxRow; rowIndex += 1) {
-        updates.push({ rowIndex, colIndex, value: sourceValue });
-      }
-    }
-
     return batchCommitCells(updates, { activityLabel: "fill_down", recordHistory: false });
-  }, [batchCommitCells, getCellValue, normalizedSelection, readOnly, selectionRange]);
+  }, [batchCommitCells, ensureRowsLoaded, getCellValue, normalizedSelection, readOnly, selectionRange]);
 
   const applyHistoryEntry = useCallback(
     async (entry: SheetHistoryEntry, direction: "undo" | "redo") => {
@@ -441,13 +451,13 @@ export function useSheetGrid({
 
       try {
         if (entry.type === "cell") {
-          const rowIndex = rows.findIndex((row) => row.id === entry.rowId);
+          const rowIndex = rowsRef.current.findIndex((row) => row?.id === entry.rowId);
           const colIndex = columns.findIndex((column) => column.key === entry.columnKey);
           if (rowIndex < 0 || colIndex < 0) {
             return;
           }
 
-          const value = direction === "undo" ? entry.before : entry.after;
+          const value = resolveHistoryCellValue(entry, direction);
           await commitCell(rowIndex, colIndex, value);
           return;
         }
@@ -455,42 +465,42 @@ export function useSheetGrid({
         if (entry.type === "row_add") {
           if (direction === "undo") {
             await deleteRow(entry.row.id);
-            setRows((current) => current.filter((row) => row.id !== entry.row.id));
+            const index = rowsRef.current.findIndex((row) => row?.id === entry.row.id);
+            if (index >= 0) {
+              setRows((current) => spliceSparseRow(current, index));
+            }
+            setTotalRowCount((count) => count - 1);
           } else {
-            const rowData =
-              entry.row.data && typeof entry.row.data === "object" && !Array.isArray(entry.row.data)
-                ? (entry.row.data as Record<string, Json | undefined>)
-                : {};
+            const rowData = extractRowData(entry.row);
             const result = await createRow(sheetId, rowData);
             if (!result.success || !result.data) {
               toast.error(!result.success ? result.error : "Failed to restore row");
               return;
             }
-            setRows((current) => [...current, result.data!]);
+            setRows((current) => appendSparseRow(current, result.data!));
+            setTotalRowCount((count) => count + 1);
           }
           return;
         }
 
         if (entry.type === "row_delete") {
           if (direction === "undo") {
-            const rowData =
-              entry.row.data && typeof entry.row.data === "object" && !Array.isArray(entry.row.data)
-                ? (entry.row.data as Record<string, Json | undefined>)
-                : {};
+            const rowData = extractRowData(entry.row);
             const result = await createRow(sheetId, rowData);
             if (!result.success || !result.data) {
               toast.error(!result.success ? result.error : "Failed to restore row");
               return;
             }
 
-            setRows((current) => {
-              const next = [...current];
-              next.splice(entry.index, 0, result.data!);
-              return next;
-            });
+            setRows((current) => insertSparseRow(current, entry.index, result.data!));
+            setTotalRowCount((count) => count + 1);
           } else {
             await deleteRow(entry.row.id);
-            setRows((current) => current.filter((row) => row.id !== entry.row.id));
+            const index = rowsRef.current.findIndex((row) => row?.id === entry.row.id);
+            if (index >= 0) {
+              setRows((current) => spliceSparseRow(current, index));
+            }
+            setTotalRowCount((count) => count - 1);
           }
           return;
         }
@@ -506,7 +516,7 @@ export function useSheetGrid({
         }
 
         if (entry.type === "column_rename") {
-          const label = direction === "undo" ? entry.before : entry.after;
+          const label = resolveColumnRenameLabel(entry, direction);
           await updateColumnLabel(entry.columnId, label);
           setColumns((current) =>
             current.map((column) =>
@@ -518,7 +528,7 @@ export function useSheetGrid({
         skipHistoryRef.current = false;
       }
     },
-    [columns, commitCell, rows, sheetId],
+    [columns, commitCell, sheetId],
   );
 
   const undo = useCallback(async () => {
@@ -592,11 +602,12 @@ export function useSheetGrid({
 
     setIsAddingRow(true);
     const tempId = `temp-${Date.now()}`;
+    const newRowIndex = totalRowCount;
     const optimisticRow: Row = {
       id: tempId,
       sheet_id: sheetId,
       org_id: "",
-      position: rows.length,
+      position: newRowIndex,
       data: {},
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -604,20 +615,23 @@ export function useSheetGrid({
       search_vector: null,
     };
 
-    setRows((current) => [...current, optimisticRow]);
-    selectSingleCell({ rowIndex: rows.length, colIndex: 0 });
+    setRows((current) => appendSparseRow(current, optimisticRow));
+    setTotalRowCount((count) => count + 1);
+    selectSingleCell({ rowIndex: newRowIndex, colIndex: 0 });
 
     const result = await createRow(sheetId, {});
     setIsAddingRow(false);
 
     if (!result.success) {
-      setRows((current) => current.filter((row) => row.id !== tempId));
+      setRows((current) => spliceSparseRow(current, newRowIndex));
+      setTotalRowCount((count) => count - 1);
       toast.error(result.error);
       return;
     }
 
     if (!result.data) {
-      setRows((current) => current.filter((row) => row.id !== tempId));
+      setRows((current) => spliceSparseRow(current, newRowIndex));
+      setTotalRowCount((count) => count - 1);
       toast.error("Failed to add row");
       return;
     }
@@ -626,9 +640,11 @@ export function useSheetGrid({
       history.push({ type: "row_add", row: result.data });
     }
 
-    setRows((current) => current.map((row) => (row.id === tempId ? result.data! : row)));
-    selectSingleCell({ rowIndex: rows.length, colIndex: 0 });
-  }, [isAddingRow, readOnly, rows.length, selectSingleCell, sheetId]);
+    setRows((current) =>
+      current.map((row, index) => (index === newRowIndex && row?.id === tempId ? result.data! : row)),
+    );
+    selectSingleCell({ rowIndex: newRowIndex, colIndex: 0 });
+  }, [history, isAddingRow, readOnly, selectSingleCell, sheetId, totalRowCount]);
 
   const addColumn = useCallback(
     async (label: string, type: ColumnType) => {
@@ -790,14 +806,21 @@ export function useSheetGrid({
         return false;
       }
 
-      const previousRows = rows;
-      const deletedIndex = rows.findIndex((row) => row.id === rowId);
-      const deletedRow = rows[deletedIndex];
-      setRows((current) => current.filter((row) => row.id !== rowId));
+      const previousRows = rowsRef.current;
+      const previousCount = totalRowCount;
+      const deletedIndex = rowsRef.current.findIndex((row) => row?.id === rowId);
+      const deletedRow = rowsRef.current[deletedIndex];
+      if (deletedIndex < 0) {
+        return false;
+      }
+
+      setRows((current) => spliceSparseRow(current, deletedIndex));
+      setTotalRowCount((count) => count - 1);
 
       const result = await deleteRow(rowId);
       if (!result.success) {
         setRows(previousRows);
+        setTotalRowCount(previousCount);
         toast.error(result.error);
         return false;
       }
@@ -806,12 +829,14 @@ export function useSheetGrid({
         history.push({ type: "row_delete", row: deletedRow, index: deletedIndex });
       }
 
+      const nextCount = totalRowCount - 1;
+      await refreshRowsRange(deletedIndex, Math.max(deletedIndex, nextCount - 1));
       setSelectionRange(null);
       setSelectedCell(null);
       bumpSelectionEpoch();
       return true;
     },
-    [bumpSelectionEpoch, history, readOnly, rows],
+    [bumpSelectionEpoch, history, readOnly, refreshRowsRange, totalRowCount],
   );
 
   const deleteColumnById = useCallback(
@@ -821,7 +846,7 @@ export function useSheetGrid({
       }
 
       const previousColumns = columns;
-      const previousRows = rows;
+      const previousRows = rowsRef.current;
       const target = columns.find((column) => column.id === columnId);
       if (!target) {
         return false;
@@ -830,6 +855,10 @@ export function useSheetGrid({
       setColumns((current) => current.filter((column) => column.id !== columnId));
       setRows((current) =>
         current.map((row) => {
+          if (!row) {
+            return row;
+          }
+
           const data = { ...parseRowData(row) };
           delete data[target.key];
           return { ...row, data };
@@ -846,72 +875,64 @@ export function useSheetGrid({
 
       return true;
     },
-    [columns, readOnly, rows],
+    [columns, readOnly],
   );
 
-  const duplicateRowById = useCallback(async (rowId: string) => {
-    if (readOnly) {
-      return false;
-    }
-
-    const result = await duplicateRow(rowId);
-    if (!result.success) {
-      toast.error(result.error);
-      return false;
-    }
-
-    if (!result.data) {
-      toast.error("Failed to duplicate row");
-      return false;
-    }
-
-    setRows((current) => {
-      const index = current.findIndex((row) => row.id === rowId);
-      if (index < 0) {
-        return [...current, result.data!].sort((a, b) => a.position - b.position);
+  const duplicateRowById = useCallback(
+    async (rowId: string) => {
+      if (readOnly) {
+        return false;
       }
 
-      const next = [...current];
-      next.splice(index + 1, 0, result.data!);
-      return next.map((row, position) => ({ ...row, position }));
-    });
+      const sourceIndex = rowsRef.current.findIndex((row) => row?.id === rowId);
+      const result = await duplicateRow(rowId);
+      if (!result.success) {
+        toast.error(result.error);
+        return false;
+      }
 
-    return true;
-  }, [readOnly]);
+      if (!result.data) {
+        toast.error("Failed to duplicate row");
+        return false;
+      }
 
-  const moveRowToIndex = useCallback(async (rowId: string, targetIndex: number) => {
-    if (readOnly) {
-      return false;
-    }
+      const insertIndex = sourceIndex >= 0 ? sourceIndex + 1 : totalRowCount;
+      const nextCount = totalRowCount + 1;
+      setRows((current) => insertSparseRow(current, insertIndex, result.data!));
+      setTotalRowCount(nextCount);
+      await refreshRowsRange(insertIndex, nextCount - 1);
+      return true;
+    },
+    [readOnly, refreshRowsRange, totalRowCount],
+  );
 
-    const previousRows = rows;
-    const fromIndex = rows.findIndex((row) => row.id === rowId);
-    if (fromIndex < 0) {
-      return false;
-    }
+  const moveRowToIndex = useCallback(
+    async (rowId: string, targetIndex: number) => {
+      if (readOnly) {
+        return false;
+      }
 
-    const reordered = [...rows];
-    const [moved] = reordered.splice(fromIndex, 1);
-    if (!moved) {
-      return false;
-    }
+      const previousRows = rowsRef.current;
+      const fromIndex = rowsRef.current.findIndex((row) => row?.id === rowId);
+      if (fromIndex < 0) {
+        return false;
+      }
 
-    reordered.splice(targetIndex, 0, moved);
-    setRows(reordered.map((row, position) => ({ ...row, position })));
+      setRows((current) => moveSparseRow(current, fromIndex, targetIndex));
 
-    const result = await reorderRow(rowId, targetIndex);
-    if (!result.success) {
-      setRows(previousRows);
-      toast.error(result.error);
-      return false;
-    }
+      const result = await reorderRow(rowId, targetIndex);
+      if (!result.success) {
+        setRows(previousRows);
+        toast.error(result.error);
+        return false;
+      }
 
-    if (result.data) {
-      setRows(result.data);
-    }
-
-    return true;
-  }, [readOnly, rows]);
+      const refreshStart = Math.min(fromIndex, targetIndex);
+      await refreshRowsRange(refreshStart, totalRowCount - 1);
+      return true;
+    },
+    [readOnly, refreshRowsRange, totalRowCount],
+  );
 
   const bulkDeleteRowsAction = useCallback(async () => {
     if (readOnly) {
@@ -924,28 +945,43 @@ export function useSheetGrid({
     }
 
     const rowIds = indexes
-      .map((index) => rows[index]?.id)
+      .map((index) => rowsRef.current[index]?.id)
       .filter((id): id is string => typeof id === "string" && !id.startsWith("temp-"));
 
     if (rowIds.length === 0) {
       return false;
     }
 
-    const previousRows = rows;
-    setRows((current) => current.filter((row) => !rowIds.includes(row.id)));
+    const previousRows = rowsRef.current;
+    const previousCount = totalRowCount;
+    const sortedIndexes = [...indexes].sort((left, right) => right - left);
+
+    const refreshStart = Math.min(...indexes);
+
+    setRows((current) => {
+      let next = current;
+      for (const index of sortedIndexes) {
+        next = spliceSparseRow(next, index);
+      }
+      return next;
+    });
+    setTotalRowCount((count) => count - rowIds.length);
 
     const result = await bulkDeleteRows(rowIds);
     if (!result.success) {
       setRows(previousRows);
+      setTotalRowCount(previousCount);
       toast.error(result.error);
       return false;
     }
 
+    const nextCount = totalRowCount - rowIds.length;
+    await refreshRowsRange(refreshStart, Math.max(refreshStart, nextCount - 1));
     setSelectionRange(null);
     setSelectedCell(null);
     bumpSelectionEpoch();
     return true;
-  }, [bumpSelectionEpoch, readOnly, rows, selectionRange]);
+  }, [bumpSelectionEpoch, readOnly, refreshRowsRange, selectionRange, totalRowCount]);
 
   const clearSelectionValues = useCallback(async () => {
     if (readOnly || !selectionRange || !normalizedSelection) {
@@ -953,6 +989,7 @@ export function useSheetGrid({
     }
 
     const { minRow, maxRow, minCol, maxCol } = normalizedSelection;
+    await ensureRowsLoaded(minRow, maxRow);
     const tasks: Array<Promise<void>> = [];
 
     for (let rowIndex = minRow; rowIndex <= maxRow; rowIndex += 1) {
@@ -963,7 +1000,7 @@ export function useSheetGrid({
 
     await Promise.all(tasks);
     return true;
-  }, [commitCell, normalizedSelection, readOnly, selectionRange]);
+  }, [commitCell, ensureRowsLoaded, normalizedSelection, readOnly, selectionRange]);
 
   return {
     sheetId,
@@ -971,6 +1008,10 @@ export function useSheetGrid({
     columns,
     columnLayout,
     rows,
+    totalRowCount,
+    ensureRowsLoaded,
+    getRowAt,
+    isRowLoaded,
     selectedCell,
     selectionRange,
     normalizedSelection: normalizedSelection ?? {

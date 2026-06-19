@@ -36,14 +36,23 @@ export function SheetGrid({
 }) {
   const gridRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { columnLayout, rows, selectedCell } = grid;
+  const { columnLayout, totalRowCount, selectedCell } = grid;
 
   const rowVirtualizer = useVirtualizer({
-    count: rows.length,
+    count: totalRowCount,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => ROW_HEIGHT,
     overscan: 12,
   });
+
+  useEffect(() => {
+    const virtualItems = rowVirtualizer.getVirtualItems();
+    if (virtualItems.length === 0) {
+      return;
+    }
+
+    void grid.ensureRowsLoaded(virtualItems[0]!.index, virtualItems.at(-1)!.index);
+  }, [grid.ensureRowsLoaded, rowVirtualizer.range?.startIndex, rowVirtualizer.range?.endIndex, totalRowCount]);
 
   useEffect(() => {
     if (!selectedCell || !gridRef.current) {
@@ -64,7 +73,12 @@ export function SheetGrid({
   }
 
   return (
-    <div ref={gridRef} role="grid" aria-rowcount={rows.length} aria-colcount={columnLayout.length}>
+    <div
+      ref={gridRef}
+      role="grid"
+      aria-rowcount={totalRowCount}
+      aria-colcount={columnLayout.length}
+    >
       <div ref={scrollRef} className="max-h-[calc(100vh-12rem)] overflow-auto">
         <SmartsheetGrid className="overflow-visible border-x border-b">
           <SmartsheetGridHeader>
@@ -88,7 +102,7 @@ export function SheetGrid({
             </SmartsheetGridRow>
           </SmartsheetGridHeader>
           <SmartsheetGridBody>
-            {rows.length === 0 ? (
+            {totalRowCount === 0 ? (
               <SmartsheetGridRow>
                 <SmartsheetGridCell colSpan={columnLayout.length + 1} className="p-0">
                   <EmptyState
@@ -106,9 +120,15 @@ export function SheetGrid({
                   />
                 )}
                 {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                  const row = rows[virtualRow.index];
+                  const row = grid.getRowAt(virtualRow.index);
                   if (!row) {
-                    return null;
+                    return (
+                      <LoadingGridRow
+                        key={`loading-${virtualRow.index}`}
+                        rowIndex={virtualRow.index}
+                        columnLayout={columnLayout}
+                      />
+                    );
                   }
 
                   return (
@@ -138,6 +158,42 @@ export function SheetGrid({
         </SmartsheetGrid>
       </div>
     </div>
+  );
+}
+
+function LoadingGridRow({
+  rowIndex,
+  columnLayout,
+}: {
+  rowIndex: number;
+  columnLayout: ColumnLayout[];
+}) {
+  return (
+    <SmartsheetGridRow aria-busy="true">
+      <SmartsheetGridPinCell
+        pinLeft={0}
+        className="p-0"
+        style={{ width: ROW_NUMBER_WIDTH, minWidth: ROW_NUMBER_WIDTH, height: ROW_HEIGHT }}
+      >
+        <div className="flex h-8 items-center justify-center text-xs text-muted-foreground">
+          {rowIndex + 1}
+        </div>
+      </SmartsheetGridPinCell>
+      {columnLayout.map((layout) => (
+        <SmartsheetGridCell
+          key={layout.id}
+          className="p-0"
+          style={{
+            width: layout.widthPx,
+            minWidth: layout.widthPx,
+            maxWidth: layout.widthPx,
+            height: ROW_HEIGHT,
+          }}
+        >
+          <div className="h-8 animate-pulse bg-muted/40" />
+        </SmartsheetGridCell>
+      ))}
+    </SmartsheetGridRow>
   );
 }
 

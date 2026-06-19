@@ -2,22 +2,10 @@
 
 import { useCallback } from "react";
 import { toast } from "sonner";
-import { parseClipboardValue, parseTsv, serializeRangeToTsv } from "@/lib/sheets/clipboard";
-import type { Json } from "@/types/database";
+import { parseTsv, serializeRangeToTsv } from "@/lib/sheets/clipboard";
+import { buildPasteCellUpdates, rowsToAddForPaste } from "@/lib/sheets/grid-operations";
+import { isGridEditableTarget, resolveGridKeyboardShortcut } from "@/lib/sheets/grid-keyboard";
 import type { SheetGridController } from "./use-sheet-grid";
-
-function isEditableTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) {
-    return false;
-  }
-
-  if (target.isContentEditable) {
-    return true;
-  }
-
-  const tag = target.tagName;
-  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
-}
 
 export function useSheetClipboard(
   grid: SheetGridController,
@@ -66,34 +54,22 @@ export function useSheetClipboard(
 
     const startRow = grid.selectedCell.rowIndex;
     const startCol = grid.selectedCell.colIndex;
-    const requiredRows = startRow + matrix.length;
+    const rowsNeeded = rowsToAddForPaste(grid.totalRowCount, startRow, matrix.length);
 
-    if (requiredRows > grid.rows.length) {
-      const added = await grid.addRows(requiredRows - grid.rows.length);
+    if (rowsNeeded > 0) {
+      const added = await grid.addRows(rowsNeeded);
       if (!added) {
         toast.error("Could not create rows for paste");
         return;
       }
     }
 
-    const updates: Array<{ rowIndex: number; colIndex: number; value: Json | undefined }> = [];
-
-    for (let rowOffset = 0; rowOffset < matrix.length; rowOffset += 1) {
-      const rowValues = matrix[rowOffset] ?? [];
-      for (let colOffset = 0; colOffset < rowValues.length; colOffset += 1) {
-        const rowIndex = startRow + rowOffset;
-        const colIndex = startCol + colOffset;
-        if (colIndex >= grid.columns.length) {
-          continue;
-        }
-
-        updates.push({
-          rowIndex,
-          colIndex,
-          value: parseClipboardValue(rowValues[colOffset] ?? ""),
-        });
-      }
-    }
+    const updates = buildPasteCellUpdates({
+      matrix,
+      startRow,
+      startCol,
+      columnCount: grid.columns.length,
+    });
 
     await grid.batchCommitCells(updates, { activityLabel: "paste" });
     options?.onAfterPaste?.();
@@ -102,30 +78,28 @@ export function useSheetClipboard(
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
-      if (grid.readOnly || isEditableTarget(event.target)) {
+      if (grid.readOnly || isGridEditableTarget(event.target)) {
         return;
       }
 
-      const mod = event.metaKey || event.ctrlKey;
-      if (!mod) {
+      const shortcut = resolveGridKeyboardShortcut(event);
+      if (!shortcut) {
         return;
       }
 
-      const key = event.key.toLowerCase();
-
-      if (key === "c") {
+      if (shortcut === "copy") {
         event.preventDefault();
         void copySelection();
         return;
       }
 
-      if (key === "x") {
+      if (shortcut === "cut") {
         event.preventDefault();
         void cutSelection();
         return;
       }
 
-      if (key === "v") {
+      if (shortcut === "paste") {
         event.preventDefault();
         void pasteFromClipboard();
       }

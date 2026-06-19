@@ -134,6 +134,7 @@ export async function teardownRlsFixtures(pool: pg.Pool): Promise<void> {
     await client.query("BEGIN");
 
     await client.query(`DELETE FROM public.shares WHERE org_id = $1`, [FIXTURE.orgId]);
+    await client.query(`DELETE FROM public.documents WHERE org_id = $1`, [FIXTURE.orgId]);
     await client.query(`DELETE FROM public.rows WHERE org_id = $1`, [FIXTURE.orgId]);
     await client.query(`DELETE FROM public.sheet_columns WHERE org_id = $1`, [FIXTURE.orgId]);
     await client.query(`DELETE FROM public.sheets WHERE org_id = $1`, [FIXTURE.orgId]);

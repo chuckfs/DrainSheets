@@ -25,6 +25,16 @@ export const bulkDeleteRowsSchema = z.object({
   rowIds: z.array(z.string().uuid()).min(1),
 });
 
+export const listRowsWindowSchema = z.object({
+  sheetId: z.string().uuid(),
+  offset: z.number().int().min(0),
+  limit: z.number().int().min(1).max(500),
+});
+
+export const getRowSchema = z.object({
+  rowId: z.string().uuid(),
+});
+
 export type CreateRowInput = z.infer<typeof createRowSchema>;
 export type UpdateRowInput = z.infer<typeof updateRowSchema>;
 export type DeleteRowInput = z.infer<typeof deleteRowSchema>;

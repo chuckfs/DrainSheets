@@ -10,12 +10,80 @@ import {
 } from "@/lib/activity/row-metadata";
 import { requireProfile } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
-import { createRowSchema, updateRowSchema, deleteRowSchema, reorderRowSchema, bulkDeleteRowsSchema } from "@/lib/validations/row";
+import { createRowSchema, updateRowSchema, deleteRowSchema, reorderRowSchema, bulkDeleteRowsSchema, listRowsWindowSchema, getRowSchema } from "@/lib/validations/row";
 import type { Json } from "@/types/database";
 import type { Row, RowData } from "@/types/domain";
+import { computeRowReorder } from "@/lib/sheets/row-position";
 
 function toRowJson(data: RowData): Json {
   return data as Json;
+}
+
+export async function countRows(sheetId: string): Promise<number> {
+  await requireProfile();
+  const supabase = await createClient();
+
+  const { count, error } = await supabase
+    .from("rows")
+    .select("*", { count: "exact", head: true })
+    .eq("sheet_id", sheetId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return count ?? 0;
+}
+
+export async function listRowsWindow(
+  sheetId: string,
+  offset: number,
+  limit: number,
+): Promise<Row[]> {
+  await requireProfile();
+  const parsed = listRowsWindowSchema.safeParse({ sheetId, offset, limit });
+
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Invalid row window");
+  }
+
+  const supabase = await createClient();
+  const rangeEnd = parsed.data.offset + parsed.data.limit - 1;
+
+  const { data, error } = await supabase
+    .from("rows")
+    .select("*")
+    .eq("sheet_id", parsed.data.sheetId)
+    .order("position", { ascending: true })
+    .range(parsed.data.offset, rangeEnd);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data ?? [];
+}
+
+export async function getRow(rowId: string): Promise<Row | null> {
+  await requireProfile();
+  const parsed = getRowSchema.safeParse({ rowId });
+
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Invalid row");
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("rows")
+    .select("*")
+    .eq("id", parsed.data.rowId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
 }
 
 export async function listRows(sheetId: string): Promise<Row[]> {
@@ -300,32 +368,23 @@ export async function reorderRow(
     return actionError(siblingsError?.message ?? "Failed to load rows");
   }
 
-  const clampedTarget = clamp(parsed.data.targetPosition, 0, siblings.length - 1);
-  const reordered = [...siblings];
-  const fromIndex = reordered.findIndex((row) => row.id === rowId);
-
-  if (fromIndex < 0) {
+  let reordered: Row[];
+  try {
+    reordered = computeRowReorder(siblings, rowId, parsed.data.targetPosition);
+  } catch {
     return actionError("Row not found");
   }
 
-  const [moved] = reordered.splice(fromIndex, 1);
-  if (!moved) {
-    return actionError("Row not found");
-  }
-
-  reordered.splice(clampedTarget, 0, moved);
-
-  for (let index = 0; index < reordered.length; index += 1) {
-    const row = reordered[index];
-    if (!row || row.position === index) {
+  for (const row of reordered) {
+    const sibling = siblings.find((entry) => entry.id === row.id);
+    if (!sibling || sibling.position === row.position) {
       continue;
     }
 
-    const { error } = await supabase.from("rows").update({ position: index }).eq("id", row.id);
+    const { error } = await supabase.from("rows").update({ position: row.position }).eq("id", row.id);
     if (error) {
       return actionError(error.message);
     }
-    row.position = index;
   }
 
   revalidatePath(`/sheets/${current.sheet_id}`);
@@ -440,8 +499,4 @@ export async function batchUpdateRows(
   }
 
   return actionSuccess({ updated });
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
 }

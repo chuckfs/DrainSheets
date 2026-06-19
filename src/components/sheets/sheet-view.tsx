@@ -8,6 +8,7 @@ export function SheetView({
   sheet,
   columns,
   rows,
+  rowCount,
   access,
   templateProvenance,
   currentUserId,
@@ -16,6 +17,7 @@ export function SheetView({
   sheet: Sheet;
   columns: SheetColumn[];
   rows: Row[];
+  rowCount: number;
   access: AccessContext;
   templateProvenance: SheetTemplateProvenance;
   currentUserId: string;
@@ -27,6 +29,7 @@ export function SheetView({
         sheet={sheet}
         initialColumns={columns}
         initialRows={rows}
+        initialRowCount={rowCount}
         access={access}
         templateProvenance={templateProvenance}
         currentUserId={currentUserId}
