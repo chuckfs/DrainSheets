@@ -20,6 +20,7 @@ import {
 } from "@/lib/templates/template-utils";
 import type { Folder, Sheet } from "@/types/domain";
 import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { ShareDialog } from "@/components/shares/share-dialog";
 import { CreateFolderDialog } from "@/components/workspaces/create-folder-dialog";
@@ -75,7 +76,7 @@ function FolderNode({
         <FolderIcon className="size-4 shrink-0 text-muted-foreground" />
         <span className="min-w-0 flex-1 truncate text-sm">{node.folder.name}</span>
         {access.canEdit && (
-          <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+          <div className="flex shrink-0 items-center gap-0.5 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
             <Button
               type="button"
               variant="ghost"
@@ -113,7 +114,7 @@ function FolderNode({
             type="button"
             variant="ghost"
             size="icon-sm"
-            className="size-6 opacity-0 transition-opacity group-hover:opacity-100"
+            className="size-6 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
             aria-label="Share folder"
             onClick={() => setShareOpen(true)}
           >
@@ -236,18 +237,23 @@ export function WorkspaceTree({
 
   if (isEmpty) {
     return (
-      <div className="px-3 py-6 text-sm text-muted-foreground">
-        <p>No folders or sheets yet.</p>
-        {access.canEdit && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Button type="button" size="sm" variant="outline" onClick={() => setCreateSheetOpen(true)}>
-              Create sheet
-            </Button>
-            <Button type="button" size="sm" variant="outline" onClick={() => setCreateFolderOpen(true)}>
-              Create folder
-            </Button>
-          </div>
-        )}
+      <>
+        <EmptyState
+          title="No sheets yet"
+          description="Create a folder or sheet to start organizing your workspace."
+          action={
+            access.canEdit ? (
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button type="button" size="sm" onClick={() => setCreateSheetOpen(true)}>
+                  Create sheet
+                </Button>
+                <Button type="button" size="sm" variant="outline" onClick={() => setCreateFolderOpen(true)}>
+                  Create folder
+                </Button>
+              </div>
+            ) : undefined
+          }
+        />
         <CreateSheetDialog
           open={createSheetOpen}
           onOpenChange={setCreateSheetOpen}
@@ -261,7 +267,7 @@ export function WorkspaceTree({
           folders={folders}
           onCreated={handleRefresh}
         />
-      </div>
+      </>
     );
   }
 

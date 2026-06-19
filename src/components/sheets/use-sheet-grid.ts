@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createColumn,
+  deleteColumn as deleteColumnAction,
   moveColumn,
   updateColumnConfig,
   updateColumnLabel,
@@ -11,6 +12,7 @@ import {
 } from "@/actions/columns";
 import {
   bulkDeleteRows,
+  batchUpdateRows,
   createRow,
   deleteRow,
   duplicateRow,
@@ -30,6 +32,7 @@ import {
 } from "@/lib/sheets/selection";
 import { toast } from "sonner";
 import type { NavigateDirection } from "./cell-renderers/types";
+import { useSheetHistory, type SheetHistoryEntry } from "./use-sheet-history";
 
 export type CellCoord = { rowIndex: number; colIndex: number };
 
@@ -72,6 +75,8 @@ export function useSheetGrid({
   const [widthOverrides, setWidthOverrides] = useState<Record<string, number>>({});
   const rollbackRef = useRef<Map<string, Json | undefined>>(new Map());
   const selectionAnchorRef = useRef<CellCoord | null>(null);
+  const history = useSheetHistory();
+  const skipHistoryRef = useRef(false);
 
   useEffect(() => {
     setColumns(initialColumns);
@@ -275,14 +280,266 @@ export function useSheetGrid({
         return;
       }
 
+      if (!skipHistoryRef.current) {
+        history.push({
+          type: "cell",
+          rowId: row.id,
+          columnKey: column.key,
+          before: previous,
+          after: value,
+        });
+      }
+
       if (result.data) {
         setRows((current) =>
           current.map((entry, index) => (index === rowIndex ? result.data! : entry)),
         );
       }
     },
-    [columns, getCellValue, readOnly, rows],
+    [columns, getCellValue, history, readOnly, rows],
   );
+
+  const commitCellSilent = useCallback(
+    async (rowIndex: number, colIndex: number, value: Json | undefined) => {
+      skipHistoryRef.current = true;
+      await commitCell(rowIndex, colIndex, value);
+      skipHistoryRef.current = false;
+    },
+    [commitCell],
+  );
+
+  const batchCommitCells = useCallback(
+    async (
+      updates: Array<{ rowIndex: number; colIndex: number; value: Json | undefined }>,
+      options?: { activityLabel?: string; recordHistory?: boolean },
+    ) => {
+      if (readOnly || updates.length === 0) {
+        return false;
+      }
+
+      const serverUpdatesMap = new Map<string, Record<string, Json | undefined>>();
+
+      for (const update of updates) {
+        const row = rows[update.rowIndex];
+        const column = columns[update.colIndex];
+        if (!row || !column || row.id.startsWith("temp-")) {
+          continue;
+        }
+
+        const existing = serverUpdatesMap.get(row.id) ?? {};
+        existing[column.key] = update.value;
+        serverUpdatesMap.set(row.id, existing);
+      }
+
+      const serverUpdates = [...serverUpdatesMap.entries()].map(([rowId, data]) => ({
+        rowId,
+        data,
+      }));
+
+      if (serverUpdates.length === 0) {
+        return false;
+      }
+
+      setRows((current) =>
+        current.map((entry, rowIndex) => {
+          const rowUpdates = updates.filter((update) => update.rowIndex === rowIndex);
+          if (rowUpdates.length === 0) {
+            return entry;
+          }
+
+          const nextData = { ...parseRowData(entry) };
+          for (const update of rowUpdates) {
+            const column = columns[update.colIndex];
+            if (column) {
+              nextData[column.key] = update.value;
+            }
+          }
+
+          return { ...entry, data: nextData };
+        }),
+      );
+
+      const result = await batchUpdateRows(serverUpdates, {
+        operation: options?.activityLabel ?? "batch_update",
+        sheetId,
+      });
+
+      if (!result.success) {
+        toast.error(result.error);
+        return false;
+      }
+
+      if (options?.recordHistory !== false && updates.length === 1) {
+        const only = updates[0]!;
+        const row = rows[only.rowIndex];
+        const column = columns[only.colIndex];
+        if (row && column) {
+          history.push({
+            type: "cell",
+            rowId: row.id,
+            columnKey: column.key,
+            before: getCellValue(only.rowIndex, only.colIndex),
+            after: only.value,
+          });
+        }
+      }
+
+      return true;
+    },
+    [columns, getCellValue, history, readOnly, rows, sheetId],
+  );
+
+  const addRows = useCallback(
+    async (count: number) => {
+      if (readOnly || count <= 0) {
+        return false;
+      }
+
+      for (let index = 0; index < count; index += 1) {
+        const result = await createRow(sheetId, {});
+        if (!result.success || !result.data) {
+          toast.error(!result.success ? result.error : "Failed to add row");
+          return false;
+        }
+
+        setRows((current) => [...current, result.data!]);
+        if (!skipHistoryRef.current) {
+          history.push({ type: "row_add", row: result.data });
+        }
+      }
+
+      return true;
+    },
+    [history, readOnly, sheetId],
+  );
+
+  const fillDown = useCallback(async () => {
+    if (readOnly || !selectionRange) {
+      return false;
+    }
+
+    const { minRow, maxRow, minCol, maxCol } = normalizedSelection ?? normalizeRange(selectionRange);
+    if (maxRow <= minRow) {
+      return false;
+    }
+
+    const updates: Array<{ rowIndex: number; colIndex: number; value: Json | undefined }> = [];
+
+    for (let colIndex = minCol; colIndex <= maxCol; colIndex += 1) {
+      const sourceValue = getCellValue(minRow, colIndex);
+      for (let rowIndex = minRow + 1; rowIndex <= maxRow; rowIndex += 1) {
+        updates.push({ rowIndex, colIndex, value: sourceValue });
+      }
+    }
+
+    return batchCommitCells(updates, { activityLabel: "fill_down", recordHistory: false });
+  }, [batchCommitCells, getCellValue, normalizedSelection, readOnly, selectionRange]);
+
+  const applyHistoryEntry = useCallback(
+    async (entry: SheetHistoryEntry, direction: "undo" | "redo") => {
+      skipHistoryRef.current = true;
+
+      try {
+        if (entry.type === "cell") {
+          const rowIndex = rows.findIndex((row) => row.id === entry.rowId);
+          const colIndex = columns.findIndex((column) => column.key === entry.columnKey);
+          if (rowIndex < 0 || colIndex < 0) {
+            return;
+          }
+
+          const value = direction === "undo" ? entry.before : entry.after;
+          await commitCell(rowIndex, colIndex, value);
+          return;
+        }
+
+        if (entry.type === "row_add") {
+          if (direction === "undo") {
+            await deleteRow(entry.row.id);
+            setRows((current) => current.filter((row) => row.id !== entry.row.id));
+          } else {
+            const rowData =
+              entry.row.data && typeof entry.row.data === "object" && !Array.isArray(entry.row.data)
+                ? (entry.row.data as Record<string, Json | undefined>)
+                : {};
+            const result = await createRow(sheetId, rowData);
+            if (!result.success || !result.data) {
+              toast.error(!result.success ? result.error : "Failed to restore row");
+              return;
+            }
+            setRows((current) => [...current, result.data!]);
+          }
+          return;
+        }
+
+        if (entry.type === "row_delete") {
+          if (direction === "undo") {
+            const rowData =
+              entry.row.data && typeof entry.row.data === "object" && !Array.isArray(entry.row.data)
+                ? (entry.row.data as Record<string, Json | undefined>)
+                : {};
+            const result = await createRow(sheetId, rowData);
+            if (!result.success || !result.data) {
+              toast.error(!result.success ? result.error : "Failed to restore row");
+              return;
+            }
+
+            setRows((current) => {
+              const next = [...current];
+              next.splice(entry.index, 0, result.data!);
+              return next;
+            });
+          } else {
+            await deleteRow(entry.row.id);
+            setRows((current) => current.filter((row) => row.id !== entry.row.id));
+          }
+          return;
+        }
+
+        if (entry.type === "column_add") {
+          if (direction === "undo") {
+            await deleteColumnAction(entry.column.id);
+            setColumns((current) => current.filter((column) => column.id !== entry.column.id));
+          } else {
+            setColumns((current) => [...current, entry.column]);
+          }
+          return;
+        }
+
+        if (entry.type === "column_rename") {
+          const label = direction === "undo" ? entry.before : entry.after;
+          await updateColumnLabel(entry.columnId, label);
+          setColumns((current) =>
+            current.map((column) =>
+              column.id === entry.columnId ? { ...column, label } : column,
+            ),
+          );
+        }
+      } finally {
+        skipHistoryRef.current = false;
+      }
+    },
+    [columns, commitCell, rows, sheetId],
+  );
+
+  const undo = useCallback(async () => {
+    const entry = history.popUndo();
+    if (!entry) {
+      return false;
+    }
+
+    await applyHistoryEntry(entry, "undo");
+    return true;
+  }, [applyHistoryEntry, history]);
+
+  const redo = useCallback(async () => {
+    const entry = history.popRedo();
+    if (!entry) {
+      return false;
+    }
+
+    await applyHistoryEntry(entry, "redo");
+    return true;
+  }, [applyHistoryEntry, history]);
 
   const startEditing = useCallback(
     (coord: CellCoord) => {
@@ -365,6 +622,10 @@ export function useSheetGrid({
       return;
     }
 
+    if (!skipHistoryRef.current) {
+      history.push({ type: "row_add", row: result.data });
+    }
+
     setRows((current) => current.map((row) => (row.id === tempId ? result.data! : row)));
     selectSingleCell({ rowIndex: rows.length, colIndex: 0 });
   }, [isAddingRow, readOnly, rows.length, selectSingleCell, sheetId]);
@@ -388,9 +649,12 @@ export function useSheetGrid({
 
       const newColumn = result.data;
       setColumns((current) => [...current, newColumn].sort((a, b) => a.position - b.position));
+      if (!skipHistoryRef.current) {
+        history.push({ type: "column_add", column: newColumn });
+      }
       return true;
     },
-    [readOnly, sheetId],
+    [history, readOnly, sheetId],
   );
 
   const renameColumn = useCallback(async (columnId: string, label: string) => {
@@ -413,8 +677,19 @@ export function useSheetGrid({
     setColumns((current) =>
       current.map((column) => (column.id === columnId ? updatedColumn : column)),
     );
+    if (!skipHistoryRef.current) {
+      const previous = columns.find((column) => column.id === columnId);
+      if (previous && previous.label !== updatedColumn.label) {
+        history.push({
+          type: "column_rename",
+          columnId,
+          before: previous.label,
+          after: updatedColumn.label,
+        });
+      }
+    }
     return true;
-  }, [readOnly]);
+  }, [columns, history, readOnly]);
 
   const reorderColumn = useCallback(async (columnId: string, direction: "left" | "right") => {
     if (readOnly) {
@@ -516,6 +791,8 @@ export function useSheetGrid({
       }
 
       const previousRows = rows;
+      const deletedIndex = rows.findIndex((row) => row.id === rowId);
+      const deletedRow = rows[deletedIndex];
       setRows((current) => current.filter((row) => row.id !== rowId));
 
       const result = await deleteRow(rowId);
@@ -525,12 +802,51 @@ export function useSheetGrid({
         return false;
       }
 
+      if (deletedRow && !skipHistoryRef.current) {
+        history.push({ type: "row_delete", row: deletedRow, index: deletedIndex });
+      }
+
       setSelectionRange(null);
       setSelectedCell(null);
       bumpSelectionEpoch();
       return true;
     },
-    [bumpSelectionEpoch, readOnly, rows],
+    [bumpSelectionEpoch, history, readOnly, rows],
+  );
+
+  const deleteColumnById = useCallback(
+    async (columnId: string) => {
+      if (readOnly) {
+        return false;
+      }
+
+      const previousColumns = columns;
+      const previousRows = rows;
+      const target = columns.find((column) => column.id === columnId);
+      if (!target) {
+        return false;
+      }
+
+      setColumns((current) => current.filter((column) => column.id !== columnId));
+      setRows((current) =>
+        current.map((row) => {
+          const data = { ...parseRowData(row) };
+          delete data[target.key];
+          return { ...row, data };
+        }),
+      );
+
+      const result = await deleteColumnAction(columnId);
+      if (!result.success) {
+        setColumns(previousColumns);
+        setRows(previousRows);
+        toast.error(result.error);
+        return false;
+      }
+
+      return true;
+    },
+    [columns, readOnly, rows],
   );
 
   const duplicateRowById = useCallback(async (rowId: string) => {
@@ -692,6 +1008,14 @@ export function useSheetGrid({
     moveRowToIndex,
     bulkDeleteRows: bulkDeleteRowsAction,
     clearSelectionValues,
+    batchCommitCells,
+    addRows,
+    fillDown,
+    undo,
+    redo,
+    canUndo: history.canUndo,
+    canRedo: history.canRedo,
+    deleteColumnById,
     getColumnWidth: (column: SheetColumn | ColumnLayout) => getColumnWidth(column),
   };
 }

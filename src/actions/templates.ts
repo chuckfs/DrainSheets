@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-result";
+import { logActivityEvent } from "@/lib/activity/log-event";
 import { requireProfile } from "@/lib/auth/guards";
 import {
   parseTemplateColumns,
@@ -133,6 +134,15 @@ async function instantiateSheet({
 
   revalidatePath(`/workspaces/${workspaceId}`);
   revalidatePath(`/sheets/${sheet.id}`);
+
+  await logActivityEvent({
+    entityType: "sheet",
+    entityId: sheet.id,
+    action: "created",
+    workspaceId,
+    sheetId: sheet.id,
+    metadata: { sheet_name: name },
+  });
 
   return actionSuccess({ sheetId: sheet.id });
 }

@@ -1,32 +1,60 @@
-import type { ActivityWithProfile } from "@/lib/activity/format";
-import {
-  formatActivityEntityLabel,
-  formatActivityMessage,
-} from "@/lib/activity/format";
+"use client";
 
-export function ActivityFeed({ activities }: { activities: ActivityWithProfile[] }) {
-  if (activities.length === 0) {
-    return (
-      <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-        No recent activity yet.
-      </p>
-    );
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { listActivity, type ActivityWithActor } from "@/actions/activity";
+import { formatActivityMessage, formatRelativeTime } from "@/lib/activity/format";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { ActivityItem } from "./activity-item";
+
+export function ActivityFeed({
+  sheetId,
+  rowId,
+}: {
+  sheetId: string;
+  rowId?: string | null;
+}) {
+  const [items, setItems] = useState<ActivityWithActor[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  async function reload() {
+    setLoading(true);
+    try {
+      const data = await listActivity(sheetId, rowId ?? null);
+      setItems(data);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to load activity");
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
+  useEffect(() => {
+    void reload();
+  }, [sheetId, rowId]);
+
   return (
-    <div className="overflow-hidden rounded-lg border">
-      <ul className="divide-y">
-        {activities.map((activity) => (
-          <li key={activity.id} className="px-4 py-3 text-sm">
-            <p>{formatActivityMessage(activity)}</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {activity.profiles?.name ?? "Someone"} ·{" "}
-              {formatActivityEntityLabel(activity.entity_type)} ·{" "}
-              {new Date(activity.created_at).toLocaleString()}
-            </p>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <ScrollArea className="h-full min-h-0 flex-1">
+      <div className="space-y-2 p-3">
+        {loading ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">Loading activity…</p>
+        ) : items.length === 0 ? (
+          <EmptyState
+            title="No activity yet"
+            description="Edits, imports, and collaboration events will appear here as your team works."
+          />
+        ) : (
+          items.map((item) => (
+            <ActivityItem
+              key={item.id}
+              message={formatActivityMessage(item, item.actor)}
+              timestamp={formatRelativeTime(item.created_at)}
+            />
+          ))
+        )}
+      </div>
+    </ScrollArea>
   );
 }

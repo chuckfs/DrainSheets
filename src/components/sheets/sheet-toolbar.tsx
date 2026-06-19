@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { ColumnsIcon, PlusIcon, RowsIcon, Share2Icon } from "lucide-react";
 import type { AccessContext } from "@/lib/access/effective-role";
 import type { Sheet } from "@/types/domain";
@@ -18,11 +18,13 @@ export function SheetToolbar({
   grid,
   access,
   templateProvenance,
+  collaborationToggle,
 }: {
   sheet: Sheet;
   grid: SheetGridController;
   access: AccessContext;
   templateProvenance: SheetTemplateProvenance;
+  collaborationToggle?: ReactNode;
 }) {
   const [addColumnOpen, setAddColumnOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -55,6 +57,7 @@ export function SheetToolbar({
         }
         actions={
           <div className="flex items-center gap-1.5">
+            {collaborationToggle}
             {access.canShare && (
               <Button
                 type="button"
@@ -62,6 +65,7 @@ export function SheetToolbar({
                 variant="outline"
                 className="h-7 gap-1 text-xs"
                 onClick={() => setShareOpen(true)}
+                aria-label="Share sheet"
               >
                 <Share2Icon className="size-3.5" />
                 Share

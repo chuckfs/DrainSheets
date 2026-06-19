@@ -5,11 +5,20 @@ import { listRows } from "@/actions/rows";
 import { getSheet } from "@/actions/sheets";
 import { trackRecentSheetView } from "@/actions/search";
 import { getSheetTemplateProvenance } from "@/actions/templates";
+import { requireProfile } from "@/lib/auth/guards";
 import { TrackRecentSheetView } from "@/components/search/track-recent-sheet-view";
 import { SheetView } from "@/components/sheets/sheet-view";
 
-export default async function SheetPage({ params }: { params: Promise<{ sheetId: string }> }) {
+export default async function SheetPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ sheetId: string }>;
+  searchParams: Promise<{ row?: string; note?: string }>;
+}) {
   const { sheetId } = await params;
+  const { row } = await searchParams;
+  const profile = await requireProfile();
   const [sheet, access] = await Promise.all([getSheet(sheetId), getSheetAccessContext(sheetId)]);
 
   if (!sheet || !access.canView) {
@@ -33,12 +42,14 @@ export default async function SheetPage({ params }: { params: Promise<{ sheetId:
         workspaceName={null}
       />
       <SheetView
-      sheet={sheet}
-      columns={columns}
-      rows={rows}
-      access={access}
-      templateProvenance={templateProvenance}
-    />
+        sheet={sheet}
+        columns={columns}
+        rows={rows}
+        access={access}
+        templateProvenance={templateProvenance}
+        currentUserId={profile.id}
+        initialRowId={row ?? null}
+      />
     </>
   );
 }

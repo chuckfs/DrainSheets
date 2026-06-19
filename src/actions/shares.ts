@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-result";
+import { logActivityEvent } from "@/lib/activity/log-event";
 import { requireProfile } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -102,6 +103,25 @@ export async function grantShare(
     return actionError(error.message);
   }
 
+  const { data: grantee } = await supabase
+    .from("profiles")
+    .select("name")
+    .eq("id", granteeId)
+    .maybeSingle();
+
+  await logActivityEvent({
+    entityType: "share",
+    entityId: share.id,
+    action: "granted",
+    metadata: {
+      grantee_name: grantee?.name ?? "User",
+      role: parsed.data.role,
+      resource_type: resourceType,
+    },
+    sheetId: resourceType === "sheet" ? resourceId : undefined,
+    workspaceId: resourceType === "workspace" ? resourceId : undefined,
+  });
+
   revalidateResourcePaths(resourceType, resourceId);
   return actionSuccess(share);
 }
@@ -144,7 +164,7 @@ export async function revokeShare(shareId: string): Promise<ActionResult> {
   const supabase = await createClient();
   const { data: existing, error: fetchError } = await supabase
     .from("shares")
-    .select("resource_type, resource_id")
+    .select("resource_type, resource_id, grantee_id, role")
     .eq("id", shareId)
     .single();
 
@@ -152,11 +172,30 @@ export async function revokeShare(shareId: string): Promise<ActionResult> {
     return actionError(fetchError.message);
   }
 
+  const { data: grantee } = await supabase
+    .from("profiles")
+    .select("name")
+    .eq("id", existing.grantee_id)
+    .maybeSingle();
+
   const { error } = await supabase.from("shares").delete().eq("id", shareId);
 
   if (error) {
     return actionError(error.message);
   }
+
+  await logActivityEvent({
+    entityType: "share",
+    entityId: shareId,
+    action: "revoked",
+    metadata: {
+      grantee_name: grantee?.name ?? "User",
+      role: existing.role,
+      resource_type: existing.resource_type,
+    },
+    sheetId: existing.resource_type === "sheet" ? existing.resource_id : undefined,
+    workspaceId: existing.resource_type === "workspace" ? existing.resource_id : undefined,
+  });
 
   revalidateResourcePaths(existing.resource_type, existing.resource_id);
   return actionSuccess();

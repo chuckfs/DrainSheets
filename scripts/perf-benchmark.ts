@@ -1,7 +1,10 @@
 /**
- * Performance benchmarks against beta seed dataset.
- * Run: npm run db:perf (after npm run db:seed-beta)
+ * G1 performance benchmarks (local Supabase).
+ * Run: npm run db:perf
+ * Optional: npm run db:seed-dev first for a baseline sheet.
  */
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { config } from "dotenv";
 import pg from "pg";
 
@@ -10,15 +13,20 @@ config({ path: ".env.local" });
 const DATABASE_URL =
   process.env.DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
 
-const BETA_ORG_ID = "22222222-2222-2222-2222-222222222201";
-const OWNER_ID = "33333333-3333-3333-3333-333333333301";
-const EDITOR_ID = "33333333-3333-3333-3333-333333333304";
-
 const THRESHOLDS_MS = {
-  dashboard: 500,
+  sheetLoad100: 200,
+  sheetLoad1000: 500,
+  sheetLoad5000: 1500,
   search: 300,
-  list: 300,
-  detail: 200,
+  importBatch: 400,
+};
+
+type BenchmarkResult = {
+  label: string;
+  ms: number;
+  threshold: number;
+  ok: boolean;
+  detail?: string;
 };
 
 async function timed<T>(label: string, fn: () => Promise<T>): Promise<{ ms: number; result: T }> {
@@ -44,179 +52,248 @@ async function asUser<T>(
   }
 }
 
+async function findBenchmarkUser(client: pg.PoolClient): Promise<string | null> {
+  const { rows } = await client.query<{ id: string }>(
+    `SELECT id FROM public.profiles ORDER BY created_at ASC LIMIT 1`,
+  );
+  return rows[0]?.id ?? null;
+}
+
+async function findBenchmarkSheet(client: pg.PoolClient): Promise<{ sheetId: string; orgId: string } | null> {
+  const { rows } = await client.query<{ sheet_id: string; org_id: string; row_count: string }>(
+    `
+    SELECT r.sheet_id, r.org_id, count(*)::text AS row_count
+    FROM public.rows r
+    GROUP BY r.sheet_id, r.org_id
+    ORDER BY count(*) DESC
+    LIMIT 1
+    `,
+  );
+
+  const row = rows[0];
+  if (!row) {
+    return null;
+  }
+
+  return { sheetId: row.sheet_id, orgId: row.org_id };
+}
+
+async function ensureLargeSheet(
+  pool: pg.Pool,
+  sheetId: string,
+  orgId: string,
+  targetRows: number,
+  userId: string,
+): Promise<void> {
+  const countResult = await pool.query<{ count: string }>(
+    `SELECT count(*)::text AS count FROM public.rows WHERE sheet_id = $1`,
+    [sheetId],
+  );
+  const existing = Number(countResult.rows[0]?.count ?? 0);
+  if (existing >= targetRows) {
+    return;
+  }
+
+  const toInsert = targetRows - existing;
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    for (let offset = 0; offset < toInsert; offset += 200) {
+      const batchSize = Math.min(200, toInsert - offset);
+      const values: unknown[] = [];
+      const placeholders: string[] = [];
+
+      for (let index = 0; index < batchSize; index += 1) {
+        const position = existing + offset + index;
+        const base = values.length;
+        values.push(
+          sheetId,
+          orgId,
+          position,
+          JSON.stringify({ company: `Bench Row ${position + 1}` }),
+          userId,
+        );
+        placeholders.push(
+          `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}::jsonb, $${base + 5})`,
+        );
+      }
+
+      await client.query(
+        `
+        INSERT INTO public.rows (sheet_id, org_id, position, data, created_by)
+        VALUES ${placeholders.join(", ")}
+        `,
+        values,
+      );
+    }
+
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+function toMarkdown(results: BenchmarkResult[]): string {
+  const lines = [
+    "# DrainSheets Performance Benchmark",
+    "",
+    `Generated: ${new Date().toISOString()}`,
+    "",
+    "| Benchmark | Duration | Threshold | Status | Detail |",
+    "| --- | ---: | ---: | --- | --- |",
+  ];
+
+  for (const result of results) {
+    lines.push(
+      `| ${result.label} | ${result.ms}ms | ${result.threshold}ms | ${result.ok ? "PASS" : "SLOW"} | ${result.detail ?? "—"} |`,
+    );
+  }
+
+  const passed = results.filter((result) => result.ok).length;
+  lines.push("", `**Summary:** ${passed}/${results.length} within thresholds.`);
+
+  return lines.join("\n");
+}
+
 async function main() {
   const pool = new pg.Pool({ connectionString: DATABASE_URL });
   const client = await pool.connect();
+  const results: BenchmarkResult[] = [];
 
-  const orgCheck = await pool.query(
-    `SELECT count(*)::int AS count FROM public.properties WHERE org_id = $1`,
-    [BETA_ORG_ID],
-  );
-  const propertyCount = orgCheck.rows[0]?.count ?? 0;
-  if (propertyCount < 20) {
-    console.warn("Beta dataset not found. Run: npm run db:seed-beta");
+  const userId = await findBenchmarkUser(client);
+  if (!userId) {
+    console.warn("No profiles found. Run npm run db:seed-dev first.");
     await pool.end();
     process.exit(1);
   }
 
-  const results: { label: string; ms: number; threshold: number; ok: boolean }[] = [];
+  const sheet = await findBenchmarkSheet(client);
+  if (!sheet) {
+    console.warn("No sheet rows found. Run npm run db:seed-dev first.");
+    await pool.end();
+    process.exit(1);
+  }
 
-  const dashboard = await timed("Dashboard stats (owner)", async () => {
-    return asUser(client, OWNER_ID, async (c) => {
-      const [properties, prospects, contacts, documents, notes] = await Promise.all([
-        c.query(`SELECT count(*) FROM public.properties WHERE org_id = $1 AND status = 'active'`, [
-          BETA_ORG_ID,
-        ]),
-        c.query(`SELECT count(*) FROM public.prospects`),
-        c.query(`SELECT count(*) FROM public.contacts`),
-        c.query(`SELECT count(*) FROM public.documents`),
-        c.query(`SELECT count(*) FROM public.notes`),
-      ]);
-      return {
-        properties: properties.rows[0]?.count,
-        prospects: prospects.rows[0]?.count,
-        contacts: contacts.rows[0]?.count,
-        documents: documents.rows[0]?.count,
-        notes: notes.rows[0]?.count,
-      };
-    });
-  });
-  results.push({
-    label: "Dashboard stats",
-    ms: dashboard.ms,
-    threshold: THRESHOLDS_MS.dashboard,
-    ok: dashboard.ms <= THRESHOLDS_MS.dashboard,
-  });
+  await ensureLargeSheet(pool, sheet.sheetId, sheet.orgId, 5000, userId);
 
-  const search = await timed("Global search RPC", async () => {
-    return asUser(client, OWNER_ID, async (c) => {
-      const { rows } = await c.query(`SELECT * FROM public.search_global($1, 25)`, ["medical"]);
+  async function loadRows(limit: number) {
+    return asUser(client, userId, async (c) => {
+      const { rows } = await c.query(
+        `
+        SELECT id, sheet_id, org_id, position, data
+        FROM public.rows
+        WHERE sheet_id = $1
+        ORDER BY position ASC
+        LIMIT $2
+        `,
+        [sheet!.sheetId, limit],
+      );
       return rows.length;
     });
-  });
+  }
+
+  const load100 = await timed("sheet load 100 rows", () => loadRows(100));
   results.push({
-    label: "Search (medical)",
+    label: "Sheet load (100 rows)",
+    ms: load100.ms,
+    threshold: THRESHOLDS_MS.sheetLoad100,
+    ok: load100.ms <= THRESHOLDS_MS.sheetLoad100,
+    detail: `${load100.result} rows`,
+  });
+
+  const load1000 = await timed("sheet load 1000 rows", () => loadRows(1000));
+  results.push({
+    label: "Sheet load (1000 rows)",
+    ms: load1000.ms,
+    threshold: THRESHOLDS_MS.sheetLoad1000,
+    ok: load1000.ms <= THRESHOLDS_MS.sheetLoad1000,
+    detail: `${load1000.result} rows`,
+  });
+
+  const load5000 = await timed("sheet load 5000 rows", () => loadRows(5000));
+  results.push({
+    label: "Sheet load (5000 rows)",
+    ms: load5000.ms,
+    threshold: THRESHOLDS_MS.sheetLoad5000,
+    ok: load5000.ms <= THRESHOLDS_MS.sheetLoad5000,
+    detail: `${load5000.result} rows`,
+  });
+
+  const search = await timed("search latency", async () =>
+    asUser(client, userId, async (c) => {
+      const { rows } = await c.query(`SELECT * FROM public.search_global($1, 25)`, ["acme"]);
+      return rows.length;
+    }),
+  );
+  results.push({
+    label: "Search latency",
     ms: search.ms,
     threshold: THRESHOLDS_MS.search,
     ok: search.ms <= THRESHOLDS_MS.search,
+    detail: `${search.result} hits`,
   });
 
-  const propertiesList = await timed("Properties list", async () => {
-    return asUser(client, OWNER_ID, async (c) => {
-      const { rows } = await c.query(
-        `SELECT id, name FROM public.properties WHERE org_id = $1 AND status = 'active' ORDER BY name LIMIT 20`,
-        [BETA_ORG_ID],
+  const importBatch = await timed("import batch insert (200 rows)", async () => {
+    await client.query("BEGIN");
+    try {
+      const values: unknown[] = [];
+      const placeholders: string[] = [];
+
+      for (let index = 0; index < 200; index += 1) {
+        const base = values.length;
+        values.push(
+          sheet.sheetId,
+          sheet.orgId,
+          900_000 + index,
+          JSON.stringify({ company: `Import Bench ${index + 1}` }),
+          userId,
+        );
+        placeholders.push(
+          `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}::jsonb, $${base + 5})`,
+        );
+      }
+
+      await client.query(
+        `
+        INSERT INTO public.rows (sheet_id, org_id, position, data, created_by)
+        VALUES ${placeholders.join(", ")}
+        `,
+        values,
       );
-      return rows.length;
-    });
-  });
-  results.push({
-    label: "Properties list",
-    ms: propertiesList.ms,
-    threshold: THRESHOLDS_MS.list,
-    ok: propertiesList.ms <= THRESHOLDS_MS.list,
+    } finally {
+      await client.query("ROLLBACK");
+    }
   });
 
-  const propertyDetail = await timed("Property detail + prospects", async () => {
-    const { rows: propRows } = await pool.query(
-      `SELECT id FROM public.properties WHERE org_id = $1 LIMIT 1`,
-      [BETA_ORG_ID],
-    );
-    const propertyId = propRows[0]?.id;
-    return asUser(client, OWNER_ID, async (c) => {
-      await c.query(`SELECT * FROM public.properties WHERE id = $1`, [propertyId]);
-      const { rows } = await c.query(
-        `SELECT id, company_name FROM public.prospects WHERE property_id = $1 LIMIT 20`,
-        [propertyId],
-      );
-      return rows.length;
-    });
-  });
   results.push({
-    label: "Property detail",
-    ms: propertyDetail.ms,
-    threshold: THRESHOLDS_MS.detail,
-    ok: propertyDetail.ms <= THRESHOLDS_MS.detail,
-  });
-
-  const prospectDetail = await timed("Prospect detail + contacts", async () => {
-    const { rows: prospectRows } = await pool.query(
-      `SELECT id FROM public.prospects WHERE property_id IN (
-        SELECT id FROM public.properties WHERE org_id = $1
-      ) LIMIT 1`,
-      [BETA_ORG_ID],
-    );
-    const prospectId = prospectRows[0]?.id;
-    return asUser(client, OWNER_ID, async (c) => {
-      await c.query(`SELECT * FROM public.prospects WHERE id = $1`, [prospectId]);
-      const { rows } = await c.query(
-        `SELECT id, first_name, last_name FROM public.contacts WHERE prospect_id = $1 LIMIT 20`,
-        [prospectId],
-      );
-      return rows.length;
-    });
-  });
-  results.push({
-    label: "Prospect detail",
-    ms: prospectDetail.ms,
-    threshold: THRESHOLDS_MS.detail,
-    ok: prospectDetail.ms <= THRESHOLDS_MS.detail,
-  });
-
-  const contactsGlobal = await timed("Global contacts list", async () => {
-    return asUser(client, OWNER_ID, async (c) => {
-      const { rows } = await c.query(
-        `SELECT id, first_name, last_name FROM public.contacts ORDER BY created_at DESC LIMIT 20`,
-      );
-      return rows.length;
-    });
-  });
-  results.push({
-    label: "Global contacts",
-    ms: contactsGlobal.ms,
-    threshold: THRESHOLDS_MS.list,
-    ok: contactsGlobal.ms <= THRESHOLDS_MS.list,
-  });
-
-  const documentsGlobal = await timed("Global documents list", async () => {
-    return asUser(client, OWNER_ID, async (c) => {
-      const { rows } = await c.query(
-        `SELECT id, file_name FROM public.documents ORDER BY created_at DESC LIMIT 20`,
-      );
-      return rows.length;
-    });
-  });
-  results.push({
-    label: "Global documents",
-    ms: documentsGlobal.ms,
-    threshold: THRESHOLDS_MS.list,
-    ok: documentsGlobal.ms <= THRESHOLDS_MS.list,
-  });
-
-  const editorSearch = await timed("Editor assigned property access", async () => {
-    return asUser(client, EDITOR_ID, async (c) => {
-      const { rows } = await c.query(`SELECT count(*)::int AS count FROM public.properties`);
-      return rows[0]?.count ?? 0;
-    });
-  });
-  results.push({
-    label: "Editor property scope",
-    ms: editorSearch.ms,
-    threshold: THRESHOLDS_MS.list,
-    ok: editorSearch.ms <= THRESHOLDS_MS.list,
+    label: "Import batch (200 rows)",
+    ms: importBatch.ms,
+    threshold: THRESHOLDS_MS.importBatch,
+    ok: importBatch.ms <= THRESHOLDS_MS.importBatch,
+    detail: "rolled back",
   });
 
   client.release();
   await pool.end();
 
-  console.log("\nPerformance benchmark (beta dataset)\n");
-  let passed = 0;
-  for (const r of results) {
-    const status = r.ok ? "PASS" : "SLOW";
-    if (r.ok) passed++;
-    console.log(`  [${status}] ${r.label}: ${r.ms}ms (threshold ${r.threshold}ms)`);
+  const markdown = toMarkdown(results);
+  const reportDir = join(process.cwd(), "reports");
+  mkdirSync(reportDir, { recursive: true });
+  const reportPath = join(reportDir, "perf-benchmark.md");
+  writeFileSync(reportPath, markdown, "utf8");
+
+  console.log("\nPerformance benchmark (G1 schema)\n");
+  for (const result of results) {
+    console.log(
+      `  [${result.ok ? "PASS" : "SLOW"}] ${result.label}: ${result.ms}ms (threshold ${result.threshold}ms)`,
+    );
   }
-  console.log(`\n${passed}/${results.length} within thresholds.\n`);
+  console.log(`\nReport written to ${reportPath}\n`);
 }
 
 main().catch((error) => {

@@ -1,3 +1,4 @@
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   SEARCH_ENTITY_LABELS,
   SEARCH_ENTITY_ORDER,
@@ -72,9 +73,10 @@ export function SearchResults({
 
   if (results.length === 0) {
     return (
-      <div className="px-3 py-8 text-center text-sm text-muted-foreground">
-        No results for “{trimmed}”
-      </div>
+      <EmptyState
+        title="No search results"
+        description={`Nothing matched “${trimmed}”. Try a different keyword or check spelling.`}
+      />
     );
   }
 

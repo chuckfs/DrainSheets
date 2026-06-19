@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-result";
+import { getSheetActivityContext, logActivityEvent } from "@/lib/activity/log-event";
 import { requireProfile } from "@/lib/auth/guards";
 import { filterRowsWithDedupe } from "@/lib/import/dedupe";
 import { inferColumns as inferColumnsLib } from "@/lib/import/infer-columns";
@@ -33,7 +34,7 @@ import type { Json } from "@/types/database";
 import type { ColumnType } from "@/types/domain";
 import { createSheetFromTemplate, getTemplateWithVersion } from "./templates";
 
-const ROW_BATCH_SIZE = 200;
+import { buildRowInsertPayloads, ROW_BATCH_SIZE } from "@/lib/import/batch-rows";
 
 async function nextSheetPosition(workspaceId: string, folderId: string | null): Promise<number> {
   const supabase = await createClient();
@@ -247,17 +248,15 @@ async function insertRowsBatched(
   rows: Array<Record<string, Json | undefined>>,
 ): Promise<void> {
   const supabase = await createClient();
+  const payloads = buildRowInsertPayloads(rows, sheetId, orgId, profileId, ROW_BATCH_SIZE);
 
-  for (let offset = 0; offset < rows.length; offset += ROW_BATCH_SIZE) {
-    const batch = rows.slice(offset, offset + ROW_BATCH_SIZE).map((data, index) => ({
-      sheet_id: sheetId,
-      org_id: orgId,
-      position: offset + index,
-      data: data as Json,
-      created_by: profileId,
-    }));
-
-    const { error } = await supabase.from("rows").insert(batch);
+  for (const batch of payloads) {
+    const { error } = await supabase.from("rows").insert(
+      batch.map((row) => ({
+        ...row,
+        data: row.data as Json,
+      })),
+    );
     if (error) {
       throw new Error(error.message);
     }
@@ -358,6 +357,18 @@ export async function createSheetFromImport(input: {
   revalidatePath(`/workspaces/${parsed.data.workspaceId}`);
   revalidatePath(`/sheets/${sheet.id}`);
 
+  const context = await getSheetActivityContext(sheet.id);
+  if (context) {
+    await logActivityEvent({
+      entityType: "import",
+      entityId: sheet.id,
+      action: "completed",
+      workspaceId: context.workspaceId,
+      sheetId: sheet.id,
+      metadata: { row_count: String(outputRows.length) },
+    });
+  }
+
   return actionSuccess({ sheetId: sheet.id, importedRows: outputRows.length });
 }
 
@@ -418,6 +429,18 @@ export async function importIntoTemplate(input: {
 
   revalidatePath(`/workspaces/${parsed.data.workspaceId}`);
   revalidatePath(`/sheets/${sheetId}`);
+
+  const context = await getSheetActivityContext(sheetId);
+  if (context) {
+    await logActivityEvent({
+      entityType: "import",
+      entityId: sheetId,
+      action: "completed",
+      workspaceId: context.workspaceId,
+      sheetId,
+      metadata: { row_count: String(outputRows.length) },
+    });
+  }
 
   return actionSuccess({ sheetId, importedRows: outputRows.length });
 }

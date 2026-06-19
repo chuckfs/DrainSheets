@@ -5,7 +5,7 @@ import { listSheets } from "@/actions/sheets";
 import { getWorkspace, listWorkspaces } from "@/actions/workspaces";
 import { requireProfile } from "@/lib/auth/guards";
 import { canCreateWorkspace } from "@/lib/permissions/sheet";
-import { WorkspaceTree } from "@/components/browse/workspace-tree";
+import { WorkspaceTreePanel } from "@/components/workspaces/workspace-tree-panel";
 import { ListPageShell } from "@/components/layout/list-page-shell";
 import {
   WorkspaceSwitcher,
@@ -45,7 +45,7 @@ export default async function WorkspacePage({
         />
       }
     >
-      <WorkspaceTree
+      <WorkspaceTreePanel
         workspaceId={workspaceId}
         folders={folders}
         sheets={sheets}

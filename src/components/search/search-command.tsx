@@ -66,6 +66,7 @@ export function SearchCommandTrigger({ onOpen }: { onOpen: () => void }) {
       type="button"
       variant="outline"
       className="h-8 w-full max-w-2xl justify-start gap-2 px-2.5 text-sm text-muted-foreground"
+      aria-label="Open search"
       onClick={onOpen}
     >
       <SearchIcon className="size-3.5 shrink-0" aria-hidden />

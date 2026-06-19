@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ImportErrorBoundary } from "@/components/errors/error-boundaries";
 import { ImportMapper } from "./import-mapper";
 import { ImportPreviewPanel } from "./import-preview";
 import { toast } from "sonner";
@@ -246,19 +247,20 @@ export function ImportDialog({
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) {
-          reset();
-        }
-        onOpenChange(next);
-      }}
-    >
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Import data</DialogTitle>
-        </DialogHeader>
+    <ImportErrorBoundary>
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          if (!next) {
+            reset();
+          }
+          onOpenChange(next);
+        }}
+      >
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Import data</DialogTitle>
+          </DialogHeader>
 
         {step === "upload" && (
           <div className="space-y-4">
@@ -399,5 +401,6 @@ export function ImportDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    </ImportErrorBoundary>
   );
 }

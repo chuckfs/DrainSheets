@@ -54,9 +54,8 @@ export const updateColumnWidthSchema = z.object({
   width: z.number().int().min(60).max(800),
 });
 
-export const updateColumnPinnedSchema = z.object({
+export const deleteColumnSchema = z.object({
   columnId: z.string().uuid(),
-  isPinned: z.boolean(),
 });
 
 export type UpdateColumnLabelInput = z.infer<typeof updateColumnLabelSchema>;

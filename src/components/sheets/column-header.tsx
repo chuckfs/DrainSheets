@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { ChevronLeftIcon, ChevronRightIcon, PinIcon, Settings2Icon } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon, PinIcon, Settings2Icon, Trash2Icon } from "lucide-react";
 import type { ColumnLayout } from "@/lib/sheets/column-widths";
 import type { SheetColumn } from "@/types/domain";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { ColumnResizeHandle } from "./column-resize-handle";
 import { SelectOptionsEditor } from "./select-options-editor";
+import { DeleteColumnDialog } from "./delete-column-dialog";
 import type { SheetGridController } from "./use-sheet-grid";
 
 export function ColumnHeader({
@@ -27,6 +28,7 @@ export function ColumnHeader({
   const [isEditing, setIsEditing] = useState(false);
   const [draftLabel, setDraftLabel] = useState(column.label);
   const [optionsOpen, setOptionsOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [isMoving, startMove] = useTransition();
   const widthRef = useRef(layout.widthPx);
 
@@ -146,6 +148,16 @@ export function ColumnHeader({
           >
             <PinIcon className={cn("size-3", column.is_pinned && "text-primary")} />
           </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="size-6 text-destructive"
+            onClick={() => setDeleteOpen(true)}
+            aria-label="Delete column"
+          >
+            <Trash2Icon className="size-3" />
+          </Button>
             </>
           )}
         </div>
@@ -170,6 +182,15 @@ export function ColumnHeader({
           open={optionsOpen}
           onOpenChange={setOptionsOpen}
           onSave={(options) => grid.saveSelectOptions(column.id, options)}
+        />
+      )}
+
+      {!isReadOnly && (
+        <DeleteColumnDialog
+          column={column}
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+          grid={grid}
         />
       )}
     </>

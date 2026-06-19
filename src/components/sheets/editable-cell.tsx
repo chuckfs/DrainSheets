@@ -173,10 +173,12 @@ export function RowNumberCell({
   grid,
   rowIndex,
   rowId,
+  onOpenRow,
 }: {
   grid: SheetGridController;
   rowIndex: number;
   rowId: string;
+  onOpenRow?: (rowId: string) => void;
 }) {
   const [dragOver, setDragOver] = useState(false);
   const isRowSelected =
@@ -220,9 +222,13 @@ export function RowNumberCell({
         className={cn("size-3 shrink-0 opacity-40", !isReadOnly && "cursor-grab")}
         aria-hidden
       />
-      <span className="text-xs">{rowIndex + 1}</span>
-      {!isReadOnly && (
-        <DropdownMenu>
+      <span
+        className={cn("text-xs", onOpenRow && "cursor-pointer hover:text-foreground")}
+        onDoubleClick={() => onOpenRow?.(rowId)}
+      >
+        {rowIndex + 1}
+      </span>
+      <DropdownMenu>
         <DropdownMenuTrigger
           render={
             <Button variant="ghost" size="icon-sm" className="size-5" aria-label="Row actions">
@@ -230,19 +236,25 @@ export function RowNumberCell({
             </Button>
           }
         />
-        <DropdownMenuContent align="start" className="w-36">
-          <DropdownMenuItem onClick={() => void grid.duplicateRowById(rowId)}>
-            Duplicate row
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            variant="destructive"
-            onClick={() => void grid.deleteRowById(rowId)}
-          >
-            Delete row
-          </DropdownMenuItem>
+        <DropdownMenuContent align="start" className="w-40">
+          {onOpenRow && (
+            <DropdownMenuItem onClick={() => onOpenRow(rowId)}>Open row</DropdownMenuItem>
+          )}
+          {!isReadOnly && (
+            <>
+              <DropdownMenuItem onClick={() => void grid.duplicateRowById(rowId)}>
+                Duplicate row
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => void grid.deleteRowById(rowId)}
+              >
+                Delete row
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
-        </DropdownMenu>
-      )}
+      </DropdownMenu>
     </div>
   );
 }

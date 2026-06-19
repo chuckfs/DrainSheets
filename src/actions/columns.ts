@@ -2,11 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-result";
+import { getSheetActivityContext, logActivityEvent } from "@/lib/activity/log-event";
 import { requireProfile } from "@/lib/auth/guards";
 import { uniqueColumnKey } from "@/lib/sheets/column-key";
 import { createClient } from "@/lib/supabase/server";
 import {
   createColumnSchema,
+  deleteColumnSchema,
   moveColumnSchema,
   updateColumnConfigSchema,
   updateColumnLabelSchema,
@@ -91,6 +93,18 @@ export async function createColumn(
     return actionError(error.message);
   }
 
+  const context = await getSheetActivityContext(sheetId);
+  if (context) {
+    await logActivityEvent({
+      entityType: "column",
+      entityId: column.id,
+      action: "created",
+      workspaceId: context.workspaceId,
+      sheetId,
+      metadata: { column_label: column.label },
+    });
+  }
+
   revalidatePath(`/sheets/${sheetId}`);
   return actionSuccess(column);
 }
@@ -107,6 +121,16 @@ export async function updateColumnLabel(
   }
 
   const supabase = await createClient();
+  const { data: existing, error: existingError } = await supabase
+    .from("sheet_columns")
+    .select("label, sheet_id")
+    .eq("id", columnId)
+    .single();
+
+  if (existingError) {
+    return actionError(existingError.message);
+  }
+
   const { data: column, error } = await supabase
     .from("sheet_columns")
     .update({ label: parsed.data.label })
@@ -116,6 +140,18 @@ export async function updateColumnLabel(
 
   if (error) {
     return actionError(error.message);
+  }
+
+  const context = await getSheetActivityContext(column.sheet_id);
+  if (context) {
+    await logActivityEvent({
+      entityType: "column",
+      entityId: column.id,
+      action: "renamed",
+      workspaceId: context.workspaceId,
+      sheetId: column.sheet_id,
+      metadata: { column_label: column.label, previous_label: existing.label },
+    });
   }
 
   revalidatePath(`/sheets/${column.sheet_id}`);
@@ -195,6 +231,18 @@ export async function moveColumn(
 
   if (reloadError) {
     return actionError(reloadError.message);
+  }
+
+  const context = await getSheetActivityContext(current.sheet_id);
+  if (context) {
+    await logActivityEvent({
+      entityType: "column",
+      entityId: current.id,
+      action: "moved",
+      workspaceId: context.workspaceId,
+      sheetId: current.sheet_id,
+      metadata: { column_label: current.label, direction: parsed.data.direction },
+    });
   }
 
   revalidatePath(`/sheets/${current.sheet_id}`);
@@ -280,4 +328,68 @@ export async function updateColumnPinned(
 
   revalidatePath(`/sheets/${column.sheet_id}`);
   return actionSuccess(column);
+}
+
+export async function deleteColumn(columnId: string): Promise<ActionResult<{ sheetId: string }>> {
+  await requireProfile();
+  const parsed = deleteColumnSchema.safeParse({ columnId });
+
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "Invalid column");
+  }
+
+  const supabase = await createClient();
+  const { data: column, error: fetchError } = await supabase
+    .from("sheet_columns")
+    .select("id, key, sheet_id, label")
+    .eq("id", columnId)
+    .single();
+
+  if (fetchError) {
+    return actionError(fetchError.message);
+  }
+
+  const { data: rowList, error: rowsError } = await supabase
+    .from("rows")
+    .select("id, data")
+    .eq("sheet_id", column.sheet_id);
+
+  if (rowsError) {
+    return actionError(rowsError.message);
+  }
+
+  for (const row of rowList ?? []) {
+    if (!row.data || typeof row.data !== "object" || Array.isArray(row.data)) {
+      continue;
+    }
+
+    const data = { ...(row.data as Record<string, Json | undefined>) };
+    delete data[column.key];
+
+    const { error } = await supabase.from("rows").update({ data: data as Json }).eq("id", row.id);
+    if (error) {
+      return actionError(error.message);
+    }
+  }
+
+  const { error: deleteError } = await supabase.from("sheet_columns").delete().eq("id", columnId);
+
+  if (deleteError) {
+    return actionError(deleteError.message);
+  }
+
+  const context = await getSheetActivityContext(column.sheet_id);
+  if (context) {
+    await logActivityEvent({
+      entityType: "column",
+      entityId: column.id,
+      action: "deleted",
+      workspaceId: context.workspaceId,
+      sheetId: column.sheet_id,
+      metadata: { column_label: column.label },
+    });
+  }
+
+  revalidatePath(`/sheets/${column.sheet_id}`);
+  return actionSuccess({ sheetId: column.sheet_id });
 }

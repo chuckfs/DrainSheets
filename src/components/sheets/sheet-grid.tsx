@@ -1,7 +1,9 @@
 "use client";
 
 import { memo, useEffect, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import type { Json } from "@/types/database";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   SmartsheetGrid,
   SmartsheetGridBody,
@@ -23,19 +25,37 @@ import { ColumnHeader } from "@/components/sheets/column-header";
 import { EditableCell, RowNumberCell } from "@/components/sheets/editable-cell";
 import type { SheetGridController } from "./use-sheet-grid";
 
-export function SheetGrid({ grid }: { grid: SheetGridController }) {
+const ROW_HEIGHT = 32;
+
+export function SheetGrid({
+  grid,
+  onOpenRow,
+}: {
+  grid: SheetGridController;
+  onOpenRow?: (rowId: string) => void;
+}) {
   const gridRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const { columnLayout, rows, selectedCell } = grid;
+
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 12,
+  });
 
   useEffect(() => {
     if (!selectedCell || !gridRef.current) {
       return;
     }
 
+    rowVirtualizer.scrollToIndex(selectedCell.rowIndex, { align: "auto" });
+
     const selector = `[data-row-index="${selectedCell.rowIndex}"][data-col-index="${selectedCell.colIndex}"]`;
     const element = gridRef.current.querySelector<HTMLElement>(selector);
     element?.focus();
-  }, [selectedCell]);
+  }, [rowVirtualizer, selectedCell]);
 
   if (columnLayout.length === 0) {
     return (
@@ -45,50 +65,78 @@ export function SheetGrid({ grid }: { grid: SheetGridController }) {
 
   return (
     <div ref={gridRef} role="grid" aria-rowcount={rows.length} aria-colcount={columnLayout.length}>
-      <SmartsheetGrid>
-        <SmartsheetGridHeader>
-          <SmartsheetGridRow>
-            <SmartsheetGridPinHead
-              pinLeft={0}
-              className="w-12 text-center"
-              style={{ width: ROW_NUMBER_WIDTH, minWidth: ROW_NUMBER_WIDTH }}
-            >
-              #
-            </SmartsheetGridPinHead>
-            {columnLayout.map((layout, columnIndex) => (
-              <ColumnHeadCell
-                key={layout.id}
-                layout={layout}
-                columnIndex={columnIndex}
-                columnCount={columnLayout.length}
-                grid={grid}
-              />
-            ))}
-          </SmartsheetGridRow>
-        </SmartsheetGridHeader>
-        <SmartsheetGridBody>
-          {rows.length === 0 ? (
+      <div ref={scrollRef} className="max-h-[calc(100vh-12rem)] overflow-auto">
+        <SmartsheetGrid className="overflow-visible border-x border-b">
+          <SmartsheetGridHeader>
             <SmartsheetGridRow>
-              <SmartsheetGridCell
-                colSpan={columnLayout.length + 1}
-                className="py-8 text-center text-muted-foreground"
+              <SmartsheetGridPinHead
+                pinLeft={0}
+                className="w-12 text-center"
+                style={{ width: ROW_NUMBER_WIDTH, minWidth: ROW_NUMBER_WIDTH }}
               >
-                No rows yet. Use Add row to create one.
-              </SmartsheetGridCell>
+                #
+              </SmartsheetGridPinHead>
+              {columnLayout.map((layout, columnIndex) => (
+                <ColumnHeadCell
+                  key={layout.id}
+                  layout={layout}
+                  columnIndex={columnIndex}
+                  columnCount={columnLayout.length}
+                  grid={grid}
+                />
+              ))}
             </SmartsheetGridRow>
-          ) : (
-            rows.map((row, rowIndex) => (
-              <SheetGridRowMemo
-                key={row.id}
-                row={row}
-                rowIndex={rowIndex}
-                columnLayout={columnLayout}
-                grid={grid}
-              />
-            ))
-          )}
-        </SmartsheetGridBody>
-      </SmartsheetGrid>
+          </SmartsheetGridHeader>
+          <SmartsheetGridBody>
+            {rows.length === 0 ? (
+              <SmartsheetGridRow>
+                <SmartsheetGridCell colSpan={columnLayout.length + 1} className="p-0">
+                  <EmptyState
+                    title="No rows yet"
+                    description="Add your first row to start tracking data in this sheet."
+                  />
+                </SmartsheetGridCell>
+              </SmartsheetGridRow>
+            ) : (
+              <>
+                {rowVirtualizer.getVirtualItems().length > 0 && (
+                  <tr
+                    aria-hidden
+                    style={{ height: rowVirtualizer.getVirtualItems()[0]?.start ?? 0 }}
+                  />
+                )}
+                {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                  const row = rows[virtualRow.index];
+                  if (!row) {
+                    return null;
+                  }
+
+                  return (
+                    <SheetGridRowMemo
+                      key={row.id}
+                      row={row}
+                      rowIndex={virtualRow.index}
+                      columnLayout={columnLayout}
+                      grid={grid}
+                      onOpenRow={onOpenRow}
+                    />
+                  );
+                })}
+                {rowVirtualizer.getVirtualItems().length > 0 && (
+                  <tr
+                    aria-hidden
+                    style={{
+                      height:
+                        rowVirtualizer.getTotalSize() -
+                        (rowVirtualizer.getVirtualItems().at(-1)?.end ?? 0),
+                    }}
+                  />
+                )}
+              </>
+            )}
+          </SmartsheetGridBody>
+        </SmartsheetGrid>
+      </div>
     </div>
   );
 }
@@ -142,9 +190,10 @@ type SheetGridRowProps = {
   rowIndex: number;
   columnLayout: ColumnLayout[];
   grid: SheetGridController;
+  onOpenRow?: (rowId: string) => void;
 };
 
-function SheetGridRowComponent({ row, rowIndex, columnLayout, grid }: SheetGridRowProps) {
+function SheetGridRowComponent({ row, rowIndex, columnLayout, grid, onOpenRow }: SheetGridRowProps) {
   const rowData =
     row.data && typeof row.data === "object" && !Array.isArray(row.data)
       ? (row.data as Record<string, Json | undefined>)
@@ -157,7 +206,7 @@ function SheetGridRowComponent({ row, rowIndex, columnLayout, grid }: SheetGridR
         className="p-0"
         style={{ width: ROW_NUMBER_WIDTH, minWidth: ROW_NUMBER_WIDTH }}
       >
-        <RowNumberCell grid={grid} rowIndex={rowIndex} rowId={row.id} />
+        <RowNumberCell grid={grid} rowIndex={rowIndex} rowId={row.id} onOpenRow={onOpenRow} />
       </SmartsheetGridPinCell>
       {columnLayout.map((layout, colIndex) => {
         const value = rowData[layout.key];
