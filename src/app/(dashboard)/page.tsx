@@ -1,45 +1,23 @@
-import { listFavorites } from "@/actions/favorites";
-import { listRecentViews } from "@/actions/recents";
-import { RecentsPageContent } from "@/components/recents/recents-page-content";
-import { CreateMenu } from "@/components/layout/create-menu";
-import { SheetHeader } from "@/components/layout/sheet-header";
+import { redirect } from "next/navigation";
+import { getDefaultWorkspace } from "@/actions/workspaces";
 import { ListPageShell } from "@/components/layout/list-page-shell";
-import { requireProfile } from "@/lib/auth/guards";
-import { canEditContact } from "@/lib/permissions/contact";
-import { canUploadDocument } from "@/lib/permissions/document";
-import {
-  canCreateProperty,
-  canEditProspect,
-} from "@/lib/permissions/property";
+import { SheetHeader } from "@/components/layout/sheet-header";
 
-export default async function RecentsPage() {
-  const profile = await requireProfile();
-  const isEditor = profile.role === "editor";
+export default async function HomePage() {
+  const workspace = await getDefaultWorkspace();
 
-  const [favorites, recents] = await Promise.all([listFavorites(), listRecentViews()]);
+  if (workspace) {
+    redirect(`/workspaces/${workspace.id}`);
+  }
 
   return (
     <ListPageShell
-      header={
-        <SheetHeader
-          title="Recents"
-          subtitle={
-            isEditor
-              ? "Your favorites and recently opened assigned properties"
-              : "Your favorites and recently opened property sheets"
-          }
-          actions={
-            <CreateMenu
-              canCreateProperty={canCreateProperty(profile)}
-              canCreateProspect={canEditProspect(profile)}
-              canCreateContact={canEditContact(profile)}
-              canUploadDocument={canUploadDocument(profile)}
-            />
-          }
-        />
-      }
+      header={<SheetHeader title="Welcome" subtitle="No workspace found for your organization." />}
     >
-      <RecentsPageContent favorites={favorites} recents={recents} />
+      <div className="px-3 py-8 text-sm text-muted-foreground">
+        <p>Seed a dev workspace and sheet, then refresh:</p>
+        <pre className="mt-3 rounded-md bg-muted px-3 py-2 text-xs">npm run db:seed-dev</pre>
+      </div>
     </ListPageShell>
   );
 }

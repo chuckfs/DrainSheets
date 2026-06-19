@@ -8,7 +8,7 @@ import { buildInviteUrl, generateInviteToken, hashInviteToken } from "@/lib/invi
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { inviteUserSchema, updateProfileSchema } from "@/lib/validations/auth";
-import type { UserRole, UserStatus } from "@/types/domain";
+import type { OrgRole, UserStatus } from "@/types/domain";
 
 export type InviteFormState = ActionResult<{ inviteUrl: string }>;
 
@@ -88,7 +88,7 @@ export async function createInvitation(
   return inviteSuccess(buildInviteUrl(token, env.NEXT_PUBLIC_APP_URL));
 }
 
-export async function updateUserRole(userId: string, role: UserRole): Promise<ActionResult> {
+export async function updateUserRole(userId: string, role: OrgRole): Promise<ActionResult> {
   await requireOwner();
 
   if (role === "owner") {
@@ -129,7 +129,7 @@ export async function updateUserStatus(
 
 export type InvitationPreview = {
   email: string;
-  role: UserRole;
+  role: OrgRole;
 };
 
 export async function getInvitationByToken(

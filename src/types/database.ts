@@ -37,41 +37,51 @@ export type Database = {
       activity: {
         Row: {
           action: string
+          actor_id: string | null
           created_at: string
           entity_id: string
           entity_type: string
           id: string
-          metadata: Json | null
+          metadata: Json
           org_id: string
-          property_id: string | null
+          row_id: string | null
           sheet_id: string | null
-          user_id: string | null
+          workspace_id: string | null
         }
         Insert: {
           action: string
+          actor_id?: string | null
           created_at?: string
           entity_id: string
           entity_type: string
           id?: string
-          metadata?: Json | null
+          metadata?: Json
           org_id: string
-          property_id?: string | null
+          row_id?: string | null
           sheet_id?: string | null
-          user_id?: string | null
+          workspace_id?: string | null
         }
         Update: {
           action?: string
+          actor_id?: string | null
           created_at?: string
           entity_id?: string
           entity_type?: string
           id?: string
-          metadata?: Json | null
+          metadata?: Json
           org_id?: string
-          property_id?: string | null
+          row_id?: string | null
           sheet_id?: string | null
-          user_id?: string | null
+          workspace_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "activity_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "activity_org_id_fkey"
             columns: ["org_id"]
@@ -80,10 +90,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "activity_property_id_fkey"
-            columns: ["property_id"]
+            foreignKeyName: "activity_row_id_fkey"
+            columns: ["row_id"]
             isOneToOne: false
-            referencedRelation: "properties"
+            referencedRelation: "rows"
             referencedColumns: ["id"]
           },
           {
@@ -94,10 +104,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "activity_user_id_fkey"
-            columns: ["user_id"]
+            foreignKeyName: "activity_workspace_id_fkey"
+            columns: ["workspace_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]
@@ -111,11 +121,8 @@ export type Database = {
           first_name: string
           id: string
           last_name: string | null
-          notes: string | null
           org_id: string
           phone: string | null
-          prospect_id: string
-          row_id: string
           search_vector: unknown
           title: string | null
           updated_at: string
@@ -129,11 +136,8 @@ export type Database = {
           first_name: string
           id?: string
           last_name?: string | null
-          notes?: string | null
           org_id: string
           phone?: string | null
-          prospect_id: string
-          row_id: string
           search_vector?: unknown
           title?: string | null
           updated_at?: string
@@ -147,11 +151,8 @@ export type Database = {
           first_name?: string
           id?: string
           last_name?: string | null
-          notes?: string | null
           org_id?: string
           phone?: string | null
-          prospect_id?: string
-          row_id?: string
           search_vector?: unknown
           title?: string | null
           updated_at?: string
@@ -173,20 +174,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "contacts_prospect_id_fkey"
-            columns: ["prospect_id"]
-            isOneToOne: false
-            referencedRelation: "prospects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "contacts_row_id_fkey"
-            columns: ["row_id"]
-            isOneToOne: false
-            referencedRelation: "rows"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "contacts_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
@@ -198,14 +185,13 @@ export type Database = {
       documents: {
         Row: {
           created_at: string
+          description: string | null
           file_name: string
           file_path: string
           file_size: number | null
           id: string
           mime_type: string | null
           org_id: string
-          property_id: string
-          prospect_id: string | null
           row_id: string | null
           search_vector: unknown
           sheet_id: string
@@ -213,14 +199,13 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          description?: string | null
           file_name: string
           file_path: string
           file_size?: number | null
           id?: string
           mime_type?: string | null
           org_id: string
-          property_id: string
-          prospect_id?: string | null
           row_id?: string | null
           search_vector?: unknown
           sheet_id: string
@@ -228,14 +213,13 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          description?: string | null
           file_name?: string
           file_path?: string
           file_size?: number | null
           id?: string
           mime_type?: string | null
           org_id?: string
-          property_id?: string
-          prospect_id?: string | null
           row_id?: string | null
           search_vector?: unknown
           sheet_id?: string
@@ -247,20 +231,6 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "documents_property_id_fkey"
-            columns: ["property_id"]
-            isOneToOne: false
-            referencedRelation: "properties"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "documents_prospect_id_fkey"
-            columns: ["prospect_id"]
-            isOneToOne: false
-            referencedRelation: "prospects"
             referencedColumns: ["id"]
           },
           {
@@ -297,8 +267,6 @@ export type Database = {
           layout: string
           message: string
           org_id: string
-          property_id: string | null
-          prospect_id: string | null
           resend_id: string | null
           row_id: string | null
           sent_by: string
@@ -317,8 +285,6 @@ export type Database = {
           layout?: string
           message?: string
           org_id: string
-          property_id?: string | null
-          prospect_id?: string | null
           resend_id?: string | null
           row_id?: string | null
           sent_by: string
@@ -337,8 +303,6 @@ export type Database = {
           layout?: string
           message?: string
           org_id?: string
-          property_id?: string | null
-          prospect_id?: string | null
           resend_id?: string | null
           row_id?: string | null
           sent_by?: string
@@ -353,20 +317,6 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "email_logs_property_id_fkey"
-            columns: ["property_id"]
-            isOneToOne: false
-            referencedRelation: "properties"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "email_logs_prospect_id_fkey"
-            columns: ["prospect_id"]
-            isOneToOne: false
-            referencedRelation: "prospects"
             referencedColumns: ["id"]
           },
           {
@@ -396,37 +346,33 @@ export type Database = {
         Row: {
           created_at: string
           id: string
-          property_id: string
-          sheet_id: string
+          org_id: string
+          target_id: string
+          target_type: Database["public"]["Enums"]["favorite_target_type"]
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
-          property_id: string
-          sheet_id: string
+          org_id: string
+          target_id: string
+          target_type: Database["public"]["Enums"]["favorite_target_type"]
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
-          property_id?: string
-          sheet_id?: string
+          org_id?: string
+          target_id?: string
+          target_type?: Database["public"]["Enums"]["favorite_target_type"]
           user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "favorites_property_id_fkey"
-            columns: ["property_id"]
+            foreignKeyName: "favorites_org_id_fkey"
+            columns: ["org_id"]
             isOneToOne: false
-            referencedRelation: "properties"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "favorites_sheet_id_fkey"
-            columns: ["sheet_id"]
-            isOneToOne: false
-            referencedRelation: "sheets"
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
@@ -434,6 +380,71 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      folders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          org_id: string
+          parent_folder_id: string | null
+          position: number
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          org_id: string
+          parent_folder_id?: string | null
+          position?: number
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          org_id?: string
+          parent_folder_id?: string | null
+          position?: number
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "folders_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "folders_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "folders_parent_folder_id_fkey"
+            columns: ["parent_folder_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "folders_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]
@@ -447,7 +458,7 @@ export type Database = {
           id: string
           invited_by: string | null
           org_id: string
-          role: Database["public"]["Enums"]["user_role"]
+          role: Database["public"]["Enums"]["org_role"]
           token_hash: string
         }
         Insert: {
@@ -458,7 +469,7 @@ export type Database = {
           id?: string
           invited_by?: string | null
           org_id: string
-          role?: Database["public"]["Enums"]["user_role"]
+          role?: Database["public"]["Enums"]["org_role"]
           token_hash: string
         }
         Update: {
@@ -469,7 +480,7 @@ export type Database = {
           id?: string
           invited_by?: string | null
           org_id?: string
-          role?: Database["public"]["Enums"]["user_role"]
+          role?: Database["public"]["Enums"]["org_role"]
           token_hash?: string
         }
         Relationships: [
@@ -495,8 +506,6 @@ export type Database = {
           created_at: string
           id: string
           org_id: string
-          property_id: string
-          prospect_id: string | null
           row_id: string | null
           search_vector: unknown
           sheet_id: string
@@ -508,8 +517,6 @@ export type Database = {
           created_at?: string
           id?: string
           org_id: string
-          property_id: string
-          prospect_id?: string | null
           row_id?: string | null
           search_vector?: unknown
           sheet_id: string
@@ -521,8 +528,6 @@ export type Database = {
           created_at?: string
           id?: string
           org_id?: string
-          property_id?: string
-          prospect_id?: string | null
           row_id?: string | null
           search_vector?: unknown
           sheet_id?: string
@@ -535,20 +540,6 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "notes_property_id_fkey"
-            columns: ["property_id"]
-            isOneToOne: false
-            referencedRelation: "properties"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "notes_prospect_id_fkey"
-            columns: ["prospect_id"]
-            isOneToOne: false
-            referencedRelation: "prospects"
             referencedColumns: ["id"]
           },
           {
@@ -599,7 +590,7 @@ export type Database = {
           id: string
           name: string
           org_id: string
-          role: Database["public"]["Enums"]["user_role"]
+          role: Database["public"]["Enums"]["org_role"]
           status: Database["public"]["Enums"]["user_status"]
           updated_at: string
         }
@@ -609,7 +600,7 @@ export type Database = {
           id: string
           name: string
           org_id: string
-          role?: Database["public"]["Enums"]["user_role"]
+          role?: Database["public"]["Enums"]["org_role"]
           status?: Database["public"]["Enums"]["user_status"]
           updated_at?: string
         }
@@ -619,7 +610,7 @@ export type Database = {
           id?: string
           name?: string
           org_id?: string
-          role?: Database["public"]["Enums"]["user_role"]
+          role?: Database["public"]["Enums"]["org_role"]
           status?: Database["public"]["Enums"]["user_status"]
           updated_at?: string
         }
@@ -633,177 +624,34 @@ export type Database = {
           },
         ]
       }
-      properties: {
-        Row: {
-          address: string | null
-          city: string | null
-          created_at: string
-          created_by: string | null
-          description: string | null
-          id: string
-          name: string
-          org_id: string
-          search_vector: unknown
-          state: string | null
-          status: Database["public"]["Enums"]["property_status"]
-          updated_at: string
-        }
-        Insert: {
-          address?: string | null
-          city?: string | null
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          id?: string
-          name: string
-          org_id: string
-          search_vector?: unknown
-          state?: string | null
-          status?: Database["public"]["Enums"]["property_status"]
-          updated_at?: string
-        }
-        Update: {
-          address?: string | null
-          city?: string | null
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          id?: string
-          name?: string
-          org_id?: string
-          search_vector?: unknown
-          state?: string | null
-          status?: Database["public"]["Enums"]["property_status"]
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "properties_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "properties_org_id_fkey"
-            columns: ["org_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      property_assignments: {
-        Row: {
-          created_at: string
-          id: string
-          property_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          property_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          property_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "property_assignments_property_id_fkey"
-            columns: ["property_id"]
-            isOneToOne: false
-            referencedRelation: "properties"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "property_assignments_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      prospects: {
-        Row: {
-          category: string | null
-          comments: string | null
-          company_name: string
-          created_at: string
-          id: string
-          property_id: string
-          search_vector: unknown
-          status: Database["public"]["Enums"]["prospect_status"] | null
-          updated_at: string
-          website: string | null
-        }
-        Insert: {
-          category?: string | null
-          comments?: string | null
-          company_name: string
-          created_at?: string
-          id?: string
-          property_id: string
-          search_vector?: unknown
-          status?: Database["public"]["Enums"]["prospect_status"] | null
-          updated_at?: string
-          website?: string | null
-        }
-        Update: {
-          category?: string | null
-          comments?: string | null
-          company_name?: string
-          created_at?: string
-          id?: string
-          property_id?: string
-          search_vector?: unknown
-          status?: Database["public"]["Enums"]["prospect_status"] | null
-          updated_at?: string
-          website?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "prospects_property_id_fkey"
-            columns: ["property_id"]
-            isOneToOne: false
-            referencedRelation: "properties"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       recent_views: {
         Row: {
           id: string
-          property_id: string
+          org_id: string
           sheet_id: string
           user_id: string
           viewed_at: string
         }
         Insert: {
           id?: string
-          property_id: string
+          org_id: string
           sheet_id: string
           user_id: string
           viewed_at?: string
         }
         Update: {
           id?: string
-          property_id?: string
+          org_id?: string
           sheet_id?: string
           user_id?: string
           viewed_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "recent_views_property_id_fkey"
-            columns: ["property_id"]
+            foreignKeyName: "recent_views_org_id_fkey"
+            columns: ["org_id"]
             isOneToOne: false
-            referencedRelation: "properties"
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
@@ -880,38 +728,57 @@ export type Database = {
           },
         ]
       }
-      sheet_assignments: {
+      shares: {
         Row: {
-          assigned_at: string
+          created_at: string
+          created_by: string | null
+          grantee_id: string
           id: string
-          sheet_id: string
-          user_id: string
+          org_id: string
+          resource_id: string
+          resource_type: Database["public"]["Enums"]["share_resource_type"]
+          role: Database["public"]["Enums"]["access_role"]
         }
         Insert: {
-          assigned_at?: string
+          created_at?: string
+          created_by?: string | null
+          grantee_id: string
           id?: string
-          sheet_id: string
-          user_id: string
+          org_id: string
+          resource_id: string
+          resource_type: Database["public"]["Enums"]["share_resource_type"]
+          role: Database["public"]["Enums"]["access_role"]
         }
         Update: {
-          assigned_at?: string
+          created_at?: string
+          created_by?: string | null
+          grantee_id?: string
           id?: string
-          sheet_id?: string
-          user_id?: string
+          org_id?: string
+          resource_id?: string
+          resource_type?: Database["public"]["Enums"]["share_resource_type"]
+          role?: Database["public"]["Enums"]["access_role"]
         }
         Relationships: [
           {
-            foreignKeyName: "sheet_assignments_sheet_id_fkey"
-            columns: ["sheet_id"]
+            foreignKeyName: "shares_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
-            referencedRelation: "sheets"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "sheet_assignments_user_id_fkey"
-            columns: ["user_id"]
+            foreignKeyName: "shares_grantee_id_fkey"
+            columns: ["grantee_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shares_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -979,10 +846,97 @@ export type Database = {
           },
         ]
       }
+      sheet_template_versions: {
+        Row: {
+          columns: Json
+          created_at: string
+          id: string
+          seed_rows: Json | null
+          template_id: string
+          version: number
+        }
+        Insert: {
+          columns: Json
+          created_at?: string
+          id?: string
+          seed_rows?: Json | null
+          template_id: string
+          version: number
+        }
+        Update: {
+          columns?: Json
+          created_at?: string
+          id?: string
+          seed_rows?: Json | null
+          template_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sheet_template_versions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "sheet_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sheet_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          current_version: number
+          description: string | null
+          id: string
+          key: string
+          name: string
+          org_id: string | null
+          scope: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          current_version?: number
+          description?: string | null
+          id?: string
+          key: string
+          name: string
+          org_id?: string | null
+          scope: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          current_version?: number
+          description?: string | null
+          id?: string
+          key?: string
+          name?: string
+          org_id?: string | null
+          scope?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sheet_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sheet_templates_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sheets: {
         Row: {
-          address: string | null
-          city: string | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -990,16 +944,15 @@ export type Database = {
           id: string
           name: string
           org_id: string
+          position: number
           search_vector: unknown
-          state: string | null
           status: Database["public"]["Enums"]["sheet_status"]
-          template_key: string | null
+          template_id: string | null
+          template_version: number | null
           updated_at: string
-          workspace_id: string | null
+          workspace_id: string
         }
         Insert: {
-          address?: string | null
-          city?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -1007,16 +960,15 @@ export type Database = {
           id?: string
           name: string
           org_id: string
+          position?: number
           search_vector?: unknown
-          state?: string | null
           status?: Database["public"]["Enums"]["sheet_status"]
-          template_key?: string | null
+          template_id?: string | null
+          template_version?: number | null
           updated_at?: string
-          workspace_id?: string | null
+          workspace_id: string
         }
         Update: {
-          address?: string | null
-          city?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -1024,12 +976,13 @@ export type Database = {
           id?: string
           name?: string
           org_id?: string
+          position?: number
           search_vector?: unknown
-          state?: string | null
           status?: Database["public"]["Enums"]["sheet_status"]
-          template_key?: string | null
+          template_id?: string | null
+          template_version?: number | null
           updated_at?: string
-          workspace_id?: string | null
+          workspace_id?: string
         }
         Relationships: [
           {
@@ -1040,7 +993,76 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "sheets_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "sheets_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sheets_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "sheet_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sheets_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workspaces: {
+        Row: {
+          color: string | null
+          created_at: string
+          created_by: string | null
+          icon: string | null
+          id: string
+          name: string
+          org_id: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+          org_id: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          org_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspaces_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workspaces_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -1053,11 +1075,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      can_access_property: {
-        Args: { check_property_id: string }
+      access_role_level: {
+        Args: { role: Database["public"]["Enums"]["access_role"] }
+        Returns: number
+      }
+      can_access_favorite_target: {
+        Args: {
+          target_id: string
+          target_type: Database["public"]["Enums"]["favorite_target_type"]
+        }
         Returns: boolean
       }
+      can_access_folder: { Args: { check_folder_id: string }; Returns: boolean }
       can_access_sheet: { Args: { check_sheet_id: string }; Returns: boolean }
+      can_access_workspace: {
+        Args: { check_workspace_id: string }
+        Returns: boolean
+      }
       current_profile: {
         Args: never
         Returns: {
@@ -1066,7 +1100,7 @@ export type Database = {
           id: string
           name: string
           org_id: string
-          role: Database["public"]["Enums"]["user_role"]
+          role: Database["public"]["Enums"]["org_role"]
           status: Database["public"]["Enums"]["user_status"]
           updated_at: string
         }
@@ -1080,29 +1114,83 @@ export type Database = {
       current_user_org_id: { Args: never; Returns: string }
       default_organization_id: { Args: never; Returns: string }
       documents_storage_path_org_id: { Args: { path: string }; Returns: string }
-      documents_storage_path_property_id: {
+      documents_storage_path_sheet_id: {
         Args: { path: string }
         Returns: string
       }
-      has_role: {
-        Args: { min_role: Database["public"]["Enums"]["user_role"] }
+      effective_role_for_folder: {
+        Args: { check_folder_id: string; check_user_id?: string }
+        Returns: Database["public"]["Enums"]["access_role"]
+      }
+      effective_role_for_sheet: {
+        Args: { check_sheet_id: string; check_user_id?: string }
+        Returns: Database["public"]["Enums"]["access_role"]
+      }
+      effective_role_for_workspace: {
+        Args: { check_user_id?: string; check_workspace_id: string }
+        Returns: Database["public"]["Enums"]["access_role"]
+      }
+      folder_ancestor_ids: {
+        Args: { start_folder_id: string }
+        Returns: string[]
+      }
+      has_access_role: {
+        Args: {
+          effective: Database["public"]["Enums"]["access_role"]
+          min_role: Database["public"]["Enums"]["access_role"]
+        }
         Returns: boolean
       }
+      has_folder_access: {
+        Args: {
+          check_folder_id: string
+          check_user_id?: string
+          min_role: Database["public"]["Enums"]["access_role"]
+        }
+        Returns: boolean
+      }
+      has_org_role: {
+        Args: { min_role: Database["public"]["Enums"]["org_role"] }
+        Returns: boolean
+      }
+      has_sheet_access: {
+        Args: {
+          check_sheet_id: string
+          check_user_id?: string
+          min_role: Database["public"]["Enums"]["access_role"]
+        }
+        Returns: boolean
+      }
+      has_workspace_access: {
+        Args: {
+          check_user_id?: string
+          check_workspace_id: string
+          min_role: Database["public"]["Enums"]["access_role"]
+        }
+        Returns: boolean
+      }
+      is_org_admin: { Args: { check_user_id?: string }; Returns: boolean }
       is_org_member: { Args: { check_org_id: string }; Returns: boolean }
-      property_id_for_contact: {
-        Args: { check_contact_id: string }
+      log_activity: {
+        Args: {
+          p_action: string
+          p_actor_id: string
+          p_entity_id: string
+          p_entity_type: string
+          p_metadata?: Json
+          p_org_id: string
+          p_row_id?: string
+          p_sheet_id?: string
+          p_workspace_id?: string
+        }
         Returns: string
       }
-      property_id_for_prospect: {
-        Args: { check_prospect_id: string }
-        Returns: string
+      max_access_role: {
+        Args: { roles: Database["public"]["Enums"]["access_role"][] }
+        Returns: Database["public"]["Enums"]["access_role"]
       }
-      provision_prospect_list_columns: {
-        Args: { target_org_id: string; target_sheet_id: string }
-        Returns: undefined
-      }
-      role_level: {
-        Args: { role: Database["public"]["Enums"]["user_role"] }
+      org_role_level: {
+        Args: { role: Database["public"]["Enums"]["org_role"] }
         Returns: number
       }
       search_global: {
@@ -1117,15 +1205,13 @@ export type Database = {
           rank: number
           sheet_id: string
           title: string
+          workspace_id: string
         }[]
-      }
-      sheet_id_for_contact: {
-        Args: { check_contact_id: string }
-        Returns: string
       }
       sheet_id_for_row: { Args: { check_row_id: string }; Returns: string }
     }
     Enums: {
+      access_role: "viewer" | "commenter" | "editor" | "admin" | "owner"
       column_type:
         | "text"
         | "long_text"
@@ -1138,15 +1224,10 @@ export type Database = {
         | "select"
         | "checkbox"
         | "contact"
-      property_status: "active" | "archived"
-      prospect_status:
-        | "researching"
-        | "contacted"
-        | "interested"
-        | "passed"
-        | "closed"
+      favorite_target_type: "workspace" | "folder" | "sheet"
+      org_role: "owner" | "admin" | "editor"
+      share_resource_type: "workspace" | "folder" | "sheet"
       sheet_status: "active" | "archived"
-      user_role: "owner" | "admin" | "editor"
       user_status: "active" | "invited" | "disabled"
     }
     CompositeTypes: {
@@ -1278,6 +1359,7 @@ export const Constants = {
   },
   public: {
     Enums: {
+      access_role: ["viewer", "commenter", "editor", "admin", "owner"],
       column_type: [
         "text",
         "long_text",
@@ -1291,16 +1373,10 @@ export const Constants = {
         "checkbox",
         "contact",
       ],
-      property_status: ["active", "archived"],
-      prospect_status: [
-        "researching",
-        "contacted",
-        "interested",
-        "passed",
-        "closed",
-      ],
+      favorite_target_type: ["workspace", "folder", "sheet"],
+      org_role: ["owner", "admin", "editor"],
+      share_resource_type: ["workspace", "folder", "sheet"],
       sheet_status: ["active", "archived"],
-      user_role: ["owner", "admin", "editor"],
       user_status: ["active", "invited", "disabled"],
     },
   },

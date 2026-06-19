@@ -1,13 +1,16 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Json } from "@/types/database";
 
 type LogActivityInput = {
   orgId: string;
-  userId: string;
-  entityType: "property" | "prospect" | "contact" | "document" | "note";
+  actorId: string;
+  entityType: string;
   entityId: string;
-  propertyId?: string | null;
   action: string;
-  metadata?: Record<string, unknown>;
+  workspaceId?: string | null;
+  sheetId?: string | null;
+  rowId?: string | null;
+  metadata?: Record<string, Json | undefined>;
 };
 
 export async function logActivity(input: LogActivityInput) {
@@ -15,12 +18,14 @@ export async function logActivity(input: LogActivityInput) {
 
   const { error } = await admin.from("activity").insert({
     org_id: input.orgId,
-    user_id: input.userId,
+    actor_id: input.actorId,
     entity_type: input.entityType,
     entity_id: input.entityId,
-    property_id: input.propertyId ?? null,
+    workspace_id: input.workspaceId ?? null,
+    sheet_id: input.sheetId ?? null,
+    row_id: input.rowId ?? null,
     action: input.action,
-    metadata: input.metadata ?? {},
+    metadata: (input.metadata ?? {}) as Json,
   });
 
   if (error) {

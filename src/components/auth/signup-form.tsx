@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import type { UserRole } from "@/types/domain";
+import type { OrgRole } from "@/types/domain";
 
 const initialState: AuthFormState | null = null;
 
@@ -17,7 +17,7 @@ export function SignupForm({
   readOnlyEmail = false,
 }: {
   email?: string;
-  role?: UserRole;
+  role?: OrgRole;
   readOnlyEmail?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(signUp, initialState);

@@ -21,13 +21,13 @@ import {
   SmartsheetGridHeader,
   SmartsheetGridRow,
 } from "@/components/data/smartsheet-grid";
-import type { UserRole, UserStatus } from "@/types/domain";
+import type { OrgRole, UserStatus } from "@/types/domain";
 
 type OrgUser = {
   id: string;
   name: string;
   email: string;
-  role: UserRole;
+  role: OrgRole;
   status: UserStatus;
   created_at: string;
 };
@@ -35,12 +35,12 @@ type OrgUser = {
 type PendingInvitation = {
   id: string;
   email: string;
-  role: UserRole;
+  role: OrgRole;
   expires_at: string;
   created_at: string;
 };
 
-function roleBadgeVariant(role: UserRole) {
+function roleBadgeVariant(role: OrgRole) {
   if (role === "owner") return "default";
   if (role === "admin") return "secondary";
   return "outline";
@@ -58,7 +58,7 @@ export function UsersTable({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
-  function handleRoleChange(userId: string, role: UserRole) {
+  function handleRoleChange(userId: string, role: OrgRole) {
     startTransition(async () => {
       await updateUserRole(userId, role);
       router.refresh();
@@ -105,7 +105,7 @@ export function UsersTable({
                     ) : (
                       <Select
                         defaultValue={user.role}
-                        onValueChange={(value) => handleRoleChange(user.id, value as UserRole)}
+                        onValueChange={(value) => handleRoleChange(user.id, value as OrgRole)}
                         disabled={pending}
                       >
                         <SelectTrigger className="h-7 w-24 text-xs">

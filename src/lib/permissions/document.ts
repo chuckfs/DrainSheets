@@ -1,12 +1,12 @@
 import type { Document, Profile } from "@/types/domain";
-import { hasRole } from "@/lib/permissions/roles";
+import { hasOrgRole } from "@/lib/permissions/roles";
 
 export function canUploadDocument(profile: Profile): boolean {
-  return hasRole(profile.role, "editor");
+  return hasOrgRole(profile.role, "editor");
 }
 
 export function canDeleteDocument(profile: Profile, document: Pick<Document, "uploaded_by">): boolean {
-  if (hasRole(profile.role, "admin")) {
+  if (hasOrgRole(profile.role, "admin")) {
     return true;
   }
 

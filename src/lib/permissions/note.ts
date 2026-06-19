@@ -1,12 +1,12 @@
 import type { Note, Profile } from "@/types/domain";
-import { hasRole } from "@/lib/permissions/roles";
+import { hasOrgRole } from "@/lib/permissions/roles";
 
 export function canCreateNote(profile: Profile): boolean {
-  return hasRole(profile.role, "editor");
+  return hasOrgRole(profile.role, "editor");
 }
 
 export function canEditNote(profile: Profile, note: Pick<Note, "user_id">): boolean {
-  if (hasRole(profile.role, "admin")) {
+  if (hasOrgRole(profile.role, "admin")) {
     return true;
   }
 
@@ -14,7 +14,7 @@ export function canEditNote(profile: Profile, note: Pick<Note, "user_id">): bool
 }
 
 export function canDeleteNote(profile: Profile, note: Pick<Note, "user_id">): boolean {
-  if (hasRole(profile.role, "admin")) {
+  if (hasOrgRole(profile.role, "admin")) {
     return true;
   }
 

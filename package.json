@@ -14,6 +14,7 @@
     "test": "vitest run",
     "test:rls": "vitest run tests/rls",
     "db:seed-beta": "tsx scripts/seed-beta.ts",
+    "db:seed-dev": "tsx scripts/seed-dev-sheet.ts",
     "db:integrity": "tsx scripts/integrity-check.ts",
     "db:perf": "tsx scripts/perf-benchmark.ts",
     "db:start": "npx supabase start",
