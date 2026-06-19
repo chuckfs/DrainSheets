@@ -1,29 +1,44 @@
 "use client";
 
+import { memo } from "react";
+import { ContactPicker } from "@/components/sheets/contact-picker";
+import { ContactCellContent } from "@/components/data/grid-pinned-columns";
+import { contactDisplayName } from "@/lib/contacts/display";
 import { cn } from "@/lib/utils";
-import { CellInput } from "./cell-input";
+import { useSheetContacts } from "@/components/sheets/sheet-contact-context";
 import type { CellRendererProps } from "./types";
-import { formatDisplayValue, valueToString } from "./utils";
+import { valueToString } from "./utils";
 
-export function ContactRenderer(props: CellRendererProps) {
-  const display = formatDisplayValue(props.column, props.value);
+function ContactRendererComponent(props: CellRendererProps) {
+  const contactsContext = useSheetContacts();
+  const contactId = valueToString(props.value);
+  const contact = contactId ? contactsContext?.contactsById.get(contactId) : undefined;
 
   if (props.mode === "display") {
+    if (contact) {
+      return (
+        <ContactCellContent
+          label={contactDisplayName(contact)}
+          email={contact.email}
+          phone={contact.phone}
+        />
+      );
+    }
+
     return (
-      <span className={cn("block truncate font-mono text-xs", !display && "text-muted-foreground")}>
-        {display || "—"}
+      <span className={cn("block truncate text-xs", !contactId && "text-muted-foreground")}>
+        {contactId || "—"}
       </span>
     );
   }
 
   return (
-    <CellInput
-      value={valueToString(props.value)}
-      autoFocus={props.autoFocus}
-      isSaving={props.isSaving}
-      onCommit={(next) => props.onCommit(next.trim() || null)}
+    <ContactPicker
+      value={contactId || null}
+      onCommit={(next) => props.onCommit(next)}
       onCancel={props.onCancel}
-      onNavigate={props.onNavigate}
     />
   );
 }
+
+export const ContactRenderer = memo(ContactRendererComponent);

@@ -8,7 +8,7 @@ import { buildInviteUrl, generateInviteToken, hashInviteToken } from "@/lib/invi
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { inviteUserSchema, updateProfileSchema } from "@/lib/validations/auth";
-import type { OrgRole, UserStatus } from "@/types/domain";
+import type { OrgRole, UserStatus, Profile } from "@/types/domain";
 
 export type InviteFormState = ActionResult<{ inviteUrl: string }>;
 
@@ -203,4 +203,38 @@ export async function listPendingInvitations() {
   }
 
   return data;
+}
+
+export type OrgUserSearchResult = Pick<Profile, "id" | "name" | "email" | "role">;
+
+export async function searchOrgUsers(
+  query: string,
+  excludeIds: string[] = [],
+): Promise<OrgUserSearchResult[]> {
+  const profile = await requireProfile();
+  const supabase = await createClient();
+
+  let builder = supabase
+    .from("profiles")
+    .select("id, name, email, role")
+    .eq("org_id", profile.org_id)
+    .eq("status", "active")
+    .neq("id", profile.id)
+    .order("name", { ascending: true })
+    .limit(20);
+
+  const trimmed = query.trim();
+  if (trimmed) {
+    const term = `%${trimmed}%`;
+    builder = builder.or(`name.ilike.${term},email.ilike.${term}`);
+  }
+
+  const { data, error } = await builder;
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const excluded = new Set(excludeIds);
+  return (data ?? []).filter((user) => !excluded.has(user.id));
 }

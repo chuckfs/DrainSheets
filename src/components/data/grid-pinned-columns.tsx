@@ -1,14 +1,6 @@
 import { cn } from "@/lib/utils";
 import { TableCell, TableHead } from "@/components/ui/table";
 
-/** Sticky pinned column offsets for property prospects grid (px). */
-export const GRID_PIN = {
-  rowNum: 0,
-  company: 40,
-  contact: 200,
-  status: 360,
-} as const;
-
 export function SmartsheetGridPinHead({
   pinLeft,
   className,

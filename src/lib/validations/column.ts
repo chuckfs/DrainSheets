@@ -36,5 +36,30 @@ export const moveColumnSchema = z.object({
   direction: z.enum(["left", "right"]),
 });
 
+export const selectOptionSchema = z.object({
+  label: z.string().min(1).max(100),
+  value: z.string().min(1).max(64).optional(),
+  color: z.string().max(32).optional(),
+});
+
+export const updateColumnConfigSchema = z.object({
+  columnId: z.string().uuid(),
+  config: z.object({
+    options: z.array(selectOptionSchema),
+  }),
+});
+
+export const updateColumnWidthSchema = z.object({
+  columnId: z.string().uuid(),
+  width: z.number().int().min(60).max(800),
+});
+
+export const updateColumnPinnedSchema = z.object({
+  columnId: z.string().uuid(),
+  isPinned: z.boolean(),
+});
+
 export type UpdateColumnLabelInput = z.infer<typeof updateColumnLabelSchema>;
 export type MoveColumnInput = z.infer<typeof moveColumnSchema>;
+export type UpdateColumnConfigInput = z.infer<typeof updateColumnConfigSchema>;
+export type UpdateColumnWidthInput = z.infer<typeof updateColumnWidthSchema>;

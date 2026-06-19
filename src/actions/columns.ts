@@ -8,9 +8,14 @@ import { createClient } from "@/lib/supabase/server";
 import {
   createColumnSchema,
   moveColumnSchema,
+  updateColumnConfigSchema,
   updateColumnLabelSchema,
+  updateColumnWidthSchema,
 } from "@/lib/validations/column";
 import type { ColumnType, SheetColumn } from "@/types/domain";
+import { getDefaultColumnWidth } from "@/lib/sheets/column-widths";
+import { selectOptionsToConfig, type SelectOptionConfig } from "@/lib/sheets/select-options";
+import type { Json } from "@/types/database";
 
 export async function listColumns(sheetId: string): Promise<SheetColumn[]> {
   await requireProfile();
@@ -74,9 +79,10 @@ export async function createColumn(
       label: parsed.data.label,
       type: parsed.data.type,
       position: parsed.data.position,
+      width: getDefaultColumnWidth(type),
       is_primary: (existingColumns ?? []).length === 0,
       is_pinned: false,
-      config: {},
+      config: type === "select" ? ({ options: [] } as Json) : {},
     })
     .select("*")
     .single();
@@ -193,4 +199,85 @@ export async function moveColumn(
 
   revalidatePath(`/sheets/${current.sheet_id}`);
   return actionSuccess(updated ?? []);
+}
+
+export async function updateColumnConfig(
+  columnId: string,
+  options: SelectOptionConfig[],
+): Promise<ActionResult<SheetColumn>> {
+  await requireProfile();
+  const parsed = updateColumnConfigSchema.safeParse({
+    columnId,
+    config: { options },
+  });
+
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "Invalid column config");
+  }
+
+  const supabase = await createClient();
+  const config = selectOptionsToConfig(parsed.data.config.options);
+
+  const { data: column, error } = await supabase
+    .from("sheet_columns")
+    .update({ config })
+    .eq("id", columnId)
+    .select("*")
+    .single();
+
+  if (error) {
+    return actionError(error.message);
+  }
+
+  revalidatePath(`/sheets/${column.sheet_id}`);
+  return actionSuccess(column);
+}
+
+export async function updateColumnWidth(
+  columnId: string,
+  width: number,
+): Promise<ActionResult<SheetColumn>> {
+  await requireProfile();
+  const parsed = updateColumnWidthSchema.safeParse({ columnId, width });
+
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "Invalid column width");
+  }
+
+  const supabase = await createClient();
+  const { data: column, error } = await supabase
+    .from("sheet_columns")
+    .update({ width: parsed.data.width })
+    .eq("id", columnId)
+    .select("*")
+    .single();
+
+  if (error) {
+    return actionError(error.message);
+  }
+
+  revalidatePath(`/sheets/${column.sheet_id}`);
+  return actionSuccess(column);
+}
+
+export async function updateColumnPinned(
+  columnId: string,
+  isPinned: boolean,
+): Promise<ActionResult<SheetColumn>> {
+  await requireProfile();
+  const supabase = await createClient();
+
+  const { data: column, error } = await supabase
+    .from("sheet_columns")
+    .update({ is_pinned: isPinned })
+    .eq("id", columnId)
+    .select("*")
+    .single();
+
+  if (error) {
+    return actionError(error.message);
+  }
+
+  revalidatePath(`/sheets/${column.sheet_id}`);
+  return actionSuccess(column);
 }

@@ -1,33 +1,19 @@
 import type { Json } from "@/types/database";
 import type { SheetColumn } from "@/types/domain";
+import {
+  normalizeSelectOptions,
+  parseSelectOptionsFromConfig,
+  resolveSelectColor,
+} from "@/lib/sheets/select-options";
 
 export type SelectOption = { value: string; label: string; color?: string };
 
 export function getSelectOptions(column: SheetColumn): SelectOption[] {
-  const config = column.config;
-  if (!config || typeof config !== "object" || Array.isArray(config)) {
-    return [];
-  }
-
-  const options = (config as { options?: unknown }).options;
-  if (!Array.isArray(options)) {
-    return [];
-  }
-
-  return options
-    .filter((option): option is { value: string; label?: string; color?: string } => {
-      return (
-        typeof option === "object" &&
-        option !== null &&
-        "value" in option &&
-        typeof option.value === "string"
-      );
-    })
-    .map((option) => ({
-      value: option.value,
-      label: typeof option.label === "string" ? option.label : option.value,
-      color: typeof option.color === "string" ? option.color : undefined,
-    }));
+  return normalizeSelectOptions(parseSelectOptionsFromConfig(column.config)).map((option) => ({
+    value: option.value,
+    label: option.label,
+    color: resolveSelectColor(option.color),
+  }));
 }
 
 export function getCurrencyCode(column: SheetColumn): string {

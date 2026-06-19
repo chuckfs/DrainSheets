@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-result";
 import { requireProfile } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
-import { createRowSchema, updateRowSchema } from "@/lib/validations/row";
+import { createRowSchema, updateRowSchema, deleteRowSchema, reorderRowSchema, bulkDeleteRowsSchema } from "@/lib/validations/row";
 import type { Json } from "@/types/database";
 import type { Row, RowData } from "@/types/domain";
 
@@ -122,4 +122,189 @@ export async function updateRow(
 
   revalidatePath(`/sheets/${row.sheet_id}`);
   return actionSuccess(row);
+}
+
+export async function deleteRow(rowId: string): Promise<ActionResult<{ sheetId: string }>> {
+  await requireProfile();
+  const parsed = deleteRowSchema.safeParse({ rowId });
+
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "Invalid row");
+  }
+
+  const supabase = await createClient();
+  const { data: existing, error: fetchError } = await supabase
+    .from("rows")
+    .select("sheet_id")
+    .eq("id", rowId)
+    .single();
+
+  if (fetchError) {
+    return actionError(fetchError.message);
+  }
+
+  const { error } = await supabase.from("rows").delete().eq("id", rowId);
+
+  if (error) {
+    return actionError(error.message);
+  }
+
+  revalidatePath(`/sheets/${existing.sheet_id}`);
+  return actionSuccess({ sheetId: existing.sheet_id });
+}
+
+export async function duplicateRow(rowId: string): Promise<ActionResult<Row>> {
+  const profile = await requireProfile();
+  const supabase = await createClient();
+
+  const { data: source, error: sourceError } = await supabase
+    .from("rows")
+    .select("*")
+    .eq("id", rowId)
+    .single();
+
+  if (sourceError) {
+    return actionError(sourceError.message);
+  }
+
+  const targetPosition = source.position + 1;
+
+  const { data: siblings, error: siblingsError } = await supabase
+    .from("rows")
+    .select("id, position")
+    .eq("sheet_id", source.sheet_id)
+    .gte("position", targetPosition)
+    .order("position", { ascending: true });
+
+  if (siblingsError) {
+    return actionError(siblingsError.message);
+  }
+
+  for (const sibling of siblings ?? []) {
+    const { error } = await supabase
+      .from("rows")
+      .update({ position: sibling.position + 1 })
+      .eq("id", sibling.id);
+
+    if (error) {
+      return actionError(error.message);
+    }
+  }
+
+  const { data: row, error } = await supabase
+    .from("rows")
+    .insert({
+      sheet_id: source.sheet_id,
+      org_id: profile.org_id,
+      position: targetPosition,
+      data: source.data,
+      created_by: profile.id,
+    })
+    .select("*")
+    .single();
+
+  if (error) {
+    return actionError(error.message);
+  }
+
+  revalidatePath(`/sheets/${source.sheet_id}`);
+  return actionSuccess(row);
+}
+
+export async function reorderRow(
+  rowId: string,
+  targetPosition: number,
+): Promise<ActionResult<Row[]>> {
+  await requireProfile();
+  const parsed = reorderRowSchema.safeParse({ rowId, targetPosition });
+
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "Invalid reorder");
+  }
+
+  const supabase = await createClient();
+  const { data: current, error: currentError } = await supabase
+    .from("rows")
+    .select("*")
+    .eq("id", rowId)
+    .single();
+
+  if (currentError) {
+    return actionError(currentError.message);
+  }
+
+  const { data: siblings, error: siblingsError } = await supabase
+    .from("rows")
+    .select("*")
+    .eq("sheet_id", current.sheet_id)
+    .order("position", { ascending: true });
+
+  if (siblingsError || !siblings) {
+    return actionError(siblingsError?.message ?? "Failed to load rows");
+  }
+
+  const clampedTarget = clamp(parsed.data.targetPosition, 0, siblings.length - 1);
+  const reordered = [...siblings];
+  const fromIndex = reordered.findIndex((row) => row.id === rowId);
+
+  if (fromIndex < 0) {
+    return actionError("Row not found");
+  }
+
+  const [moved] = reordered.splice(fromIndex, 1);
+  if (!moved) {
+    return actionError("Row not found");
+  }
+
+  reordered.splice(clampedTarget, 0, moved);
+
+  for (let index = 0; index < reordered.length; index += 1) {
+    const row = reordered[index];
+    if (!row || row.position === index) {
+      continue;
+    }
+
+    const { error } = await supabase.from("rows").update({ position: index }).eq("id", row.id);
+    if (error) {
+      return actionError(error.message);
+    }
+    row.position = index;
+  }
+
+  revalidatePath(`/sheets/${current.sheet_id}`);
+  return actionSuccess(reordered);
+}
+
+export async function bulkDeleteRows(rowIds: string[]): Promise<ActionResult<{ sheetId: string }>> {
+  await requireProfile();
+  const parsed = bulkDeleteRowsSchema.safeParse({ rowIds });
+
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "Invalid row selection");
+  }
+
+  const supabase = await createClient();
+  const { data: rows, error: fetchError } = await supabase
+    .from("rows")
+    .select("sheet_id")
+    .in("id", parsed.data.rowIds)
+    .limit(1);
+
+  if (fetchError || !rows?.[0]) {
+    return actionError(fetchError?.message ?? "Rows not found");
+  }
+
+  const sheetId = rows[0].sheet_id;
+  const { error } = await supabase.from("rows").delete().in("id", parsed.data.rowIds);
+
+  if (error) {
+    return actionError(error.message);
+  }
+
+  revalidatePath(`/sheets/${sheetId}`);
+  return actionSuccess({ sheetId });
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
 }

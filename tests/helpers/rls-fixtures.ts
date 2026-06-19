@@ -5,23 +5,25 @@ export const FIXTURE = {
   orgId: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1",
   ownerId: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1",
   adminId: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2",
-  editorAId: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb3",
-  propertyXId: "cccccccc-cccc-cccc-cccc-ccccccccccc1",
-  propertyYId: "cccccccc-cccc-cccc-cccc-ccccccccccc2",
-  prospectXId: "dddddddd-dddd-dddd-dddd-ddddddddddd1",
-  prospectYId: "dddddddd-dddd-dddd-dddd-ddddddddddd2",
-  contactXId: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee1",
-  contactYId: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee2",
-  documentXId: "ffffffff-ffff-ffff-ffff-fffffffffff1",
-  documentYId: "ffffffff-ffff-ffff-ffff-fffffffffff2",
-  noteXId: "11111111-1111-1111-1111-111111111101",
-  noteYId: "11111111-1111-1111-1111-111111111102",
+  editorNoShareId: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb3",
+  memberBId: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb4",
+  workspaceId: "cccccccc-cccc-cccc-cccc-ccccccccccc1",
+  folderId: "cccccccc-cccc-cccc-cccc-ccccccccccc2",
+  sheetRootId: "dddddddd-dddd-dddd-dddd-ddddddddddd1",
+  sheetInFolderId: "dddddddd-dddd-dddd-dddd-ddddddddddd2",
+  rowRootId: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee1",
+  rowFolderId: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee2",
+  shareWorkspaceEditorId: "ffffffff-ffff-ffff-ffff-fffffffffff1",
+  shareWorkspaceViewerId: "ffffffff-ffff-ffff-ffff-fffffffffff2",
+  shareFolderEditorId: "ffffffff-ffff-ffff-ffff-fffffffffff3",
+  shareSheetEditorId: "ffffffff-ffff-ffff-ffff-fffffffffff4",
 } as const;
 
 const TEST_USERS = [
   { id: FIXTURE.ownerId, email: "rls-owner@test.local", role: "owner" },
   { id: FIXTURE.adminId, email: "rls-admin@test.local", role: "admin" },
-  { id: FIXTURE.editorAId, email: "rls-editor-a@test.local", role: "editor" },
+  { id: FIXTURE.editorNoShareId, email: "rls-editor-noshare@test.local", role: "editor" },
+  { id: FIXTURE.memberBId, email: "rls-member-b@test.local", role: "editor" },
 ] as const;
 
 async function insertAuthUser(client: pg.PoolClient, id: string, email: string) {
@@ -47,7 +49,7 @@ export async function setupRlsFixtures(pool: pg.Pool): Promise<void> {
     await client.query("BEGIN");
 
     await client.query(
-      `INSERT INTO public.organizations (id, name) VALUES ($1, 'RLS Test Org') ON CONFLICT (id) DO NOTHING`,
+      `INSERT INTO public.organizations (id, name) VALUES ($1, 'RLS Access Test Org') ON CONFLICT (id) DO NOTHING`,
       [FIXTURE.orgId],
     );
 
@@ -65,91 +67,55 @@ export async function setupRlsFixtures(pool: pg.Pool): Promise<void> {
 
     await client.query(
       `
-      INSERT INTO public.properties (id, org_id, name, city, state, status, created_by)
-      VALUES
-        ($1, $3, 'Property X (Assigned)', 'Austin', 'TX', 'active', $4),
-        ($2, $3, 'Property Y (Unassigned)', 'Dallas', 'TX', 'active', $4)
+      INSERT INTO public.workspaces (id, org_id, name, created_by)
+      VALUES ($1, $2, 'Access Test Workspace', $3)
       ON CONFLICT (id) DO NOTHING
       `,
-      [FIXTURE.propertyXId, FIXTURE.propertyYId, FIXTURE.orgId, FIXTURE.ownerId],
+      [FIXTURE.workspaceId, FIXTURE.orgId, FIXTURE.ownerId],
     );
 
     await client.query(
       `
-      INSERT INTO public.property_assignments (property_id, user_id)
-      VALUES ($1, $2)
-      ON CONFLICT (property_id, user_id) DO NOTHING
-      `,
-      [FIXTURE.propertyXId, FIXTURE.editorAId],
-    );
-
-    await client.query(
-      `
-      INSERT INTO public.prospects (id, property_id, company_name, category)
-      VALUES
-        ($1, $3, 'Prospect on X', 'Restaurant'),
-        ($2, $4, 'Prospect on Y', 'Medical')
+      INSERT INTO public.folders (id, org_id, workspace_id, name, position, created_by)
+      VALUES ($1, $2, $3, 'Access Test Folder', 0, $4)
       ON CONFLICT (id) DO NOTHING
       `,
-      [FIXTURE.prospectXId, FIXTURE.prospectYId, FIXTURE.propertyXId, FIXTURE.propertyYId],
+      [FIXTURE.folderId, FIXTURE.orgId, FIXTURE.workspaceId, FIXTURE.ownerId],
     );
 
     await client.query(
       `
-      INSERT INTO public.contacts (id, prospect_id, first_name, last_name, org_id, created_by)
+      INSERT INTO public.sheets (id, org_id, workspace_id, folder_id, name, position, created_by)
       VALUES
-        ($1, $3, 'Contact', 'X', $5, $6),
-        ($2, $4, 'Contact', 'Y', $5, $6)
+        ($1, $3, $4, NULL, 'Root Sheet', 0, $5),
+        ($2, $3, $4, $6, 'Folder Sheet', 0, $5)
       ON CONFLICT (id) DO NOTHING
       `,
       [
-        FIXTURE.contactXId,
-        FIXTURE.contactYId,
-        FIXTURE.prospectXId,
-        FIXTURE.prospectYId,
+        FIXTURE.sheetRootId,
+        FIXTURE.sheetInFolderId,
         FIXTURE.orgId,
+        FIXTURE.workspaceId,
         FIXTURE.ownerId,
-      ],
-    );
-
-    const docPathX = `${FIXTURE.orgId}/${FIXTURE.propertyXId}/doc-x.pdf`;
-    const docPathY = `${FIXTURE.orgId}/${FIXTURE.propertyYId}/doc-y.pdf`;
-
-    await client.query(
-      `
-      INSERT INTO public.documents (id, property_id, org_id, file_name, file_path, uploaded_by)
-      VALUES
-        ($1, $3, $5, 'doc-x.pdf', $7, $6),
-        ($2, $4, $5, 'doc-y.pdf', $8, $6)
-      ON CONFLICT (id) DO NOTHING
-      `,
-      [
-        FIXTURE.documentXId,
-        FIXTURE.documentYId,
-        FIXTURE.propertyXId,
-        FIXTURE.propertyYId,
-        FIXTURE.orgId,
-        FIXTURE.ownerId,
-        docPathX,
-        docPathY,
+        FIXTURE.folderId,
       ],
     );
 
     await client.query(
       `
-      INSERT INTO public.notes (id, property_id, org_id, user_id, content)
+      INSERT INTO public.rows (id, sheet_id, org_id, position, data, created_by)
       VALUES
-        ($1, $3, $5, $6, 'Note on property X'),
-        ($2, $4, $5, $6, 'Note on property Y')
+        ($1, $3, $4, 0, '{"name":"Root row"}'::jsonb, $5),
+        ($2, $6, $4, 0, '{"name":"Folder row"}'::jsonb, $5)
       ON CONFLICT (id) DO NOTHING
       `,
       [
-        FIXTURE.noteXId,
-        FIXTURE.noteYId,
-        FIXTURE.propertyXId,
-        FIXTURE.propertyYId,
+        FIXTURE.rowRootId,
+        FIXTURE.rowFolderId,
+        FIXTURE.sheetRootId,
         FIXTURE.orgId,
         FIXTURE.ownerId,
+        FIXTURE.sheetInFolderId,
       ],
     );
 
@@ -166,42 +132,22 @@ export async function teardownRlsFixtures(pool: pg.Pool): Promise<void> {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    await client.query(`DELETE FROM public.recent_views WHERE property_id IN ($1, $2)`, [
-      FIXTURE.propertyXId,
-      FIXTURE.propertyYId,
-    ]);
-    await client.query(`DELETE FROM public.favorites WHERE property_id IN ($1, $2)`, [
-      FIXTURE.propertyXId,
-      FIXTURE.propertyYId,
-    ]);
-    await client.query(`DELETE FROM public.property_assignments WHERE property_id IN ($1, $2)`, [
-      FIXTURE.propertyXId,
-      FIXTURE.propertyYId,
-    ]);
-    await client.query(`DELETE FROM public.notes WHERE id IN ($1, $2)`, [
-      FIXTURE.noteXId,
-      FIXTURE.noteYId,
-    ]);
-    await client.query(`DELETE FROM public.documents WHERE id IN ($1, $2)`, [
-      FIXTURE.documentXId,
-      FIXTURE.documentYId,
-    ]);
-    await client.query(`DELETE FROM public.contacts WHERE id IN ($1, $2)`, [
-      FIXTURE.contactXId,
-      FIXTURE.contactYId,
-    ]);
-    await client.query(`DELETE FROM public.prospects WHERE id IN ($1, $2)`, [
-      FIXTURE.prospectXId,
-      FIXTURE.prospectYId,
-    ]);
-    await client.query(`DELETE FROM public.properties WHERE id IN ($1, $2)`, [
-      FIXTURE.propertyXId,
-      FIXTURE.propertyYId,
-    ]);
+
+    await client.query(`DELETE FROM public.shares WHERE org_id = $1`, [FIXTURE.orgId]);
+    await client.query(`DELETE FROM public.rows WHERE org_id = $1`, [FIXTURE.orgId]);
+    await client.query(`DELETE FROM public.sheet_columns WHERE org_id = $1`, [FIXTURE.orgId]);
+    await client.query(`DELETE FROM public.sheets WHERE org_id = $1`, [FIXTURE.orgId]);
+    await client.query(`DELETE FROM public.folders WHERE org_id = $1`, [FIXTURE.orgId]);
+    await client.query(`DELETE FROM public.workspaces WHERE org_id = $1`, [FIXTURE.orgId]);
     await client.query(`DELETE FROM public.invitations WHERE org_id = $1`, [FIXTURE.orgId]);
     await client.query(`DELETE FROM public.profiles WHERE org_id = $1`, [FIXTURE.orgId]);
     await client.query(`DELETE FROM auth.users WHERE id = ANY($1::uuid[])`, [
-      [FIXTURE.ownerId, FIXTURE.adminId, FIXTURE.editorAId],
+      [
+        FIXTURE.ownerId,
+        FIXTURE.adminId,
+        FIXTURE.editorNoShareId,
+        FIXTURE.memberBId,
+      ],
     ]);
     await client.query(`DELETE FROM public.organizations WHERE id = $1`, [FIXTURE.orgId]);
     await client.query("COMMIT");
@@ -211,4 +157,37 @@ export async function teardownRlsFixtures(pool: pg.Pool): Promise<void> {
   } finally {
     client.release();
   }
+}
+
+export async function insertShare(
+  pool: pg.Pool,
+  share: {
+    id: string;
+    granteeId: string;
+    resourceType: "workspace" | "folder" | "sheet";
+    resourceId: string;
+    role: "viewer" | "commenter" | "editor" | "admin";
+    createdBy: string;
+  },
+): Promise<void> {
+  await pool.query(
+    `
+    INSERT INTO public.shares (id, org_id, grantee_id, resource_type, resource_id, role, created_by)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    ON CONFLICT (grantee_id, resource_type, resource_id) DO UPDATE SET role = EXCLUDED.role
+    `,
+    [
+      share.id,
+      FIXTURE.orgId,
+      share.granteeId,
+      share.resourceType,
+      share.resourceId,
+      share.role,
+      share.createdBy,
+    ],
+  );
+}
+
+export async function deleteShare(pool: pg.Pool, shareId: string): Promise<void> {
+  await pool.query(`DELETE FROM public.shares WHERE id = $1`, [shareId]);
 }
