@@ -5,6 +5,13 @@
 import type { Json } from "@/types/database";
 import type { Row, SheetColumn } from "@/types/domain";
 
+/**
+ * Hard cap on how many rows a filtered/sorted view loads into the client at once.
+ * Normal scrolling/browsing is windowed (listRowsWindow) and has no cap; this only
+ * bounds a single sort/filter "view" so it stays responsive and memory-safe.
+ */
+export const ROW_VIEW_CAP = 5000;
+
 export type RowFilterOperator =
   | "contains"
   | "equals"

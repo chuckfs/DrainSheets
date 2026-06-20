@@ -14,18 +14,11 @@ import { createRowSchema, updateRowSchema, deleteRowSchema, reorderRowSchema, bu
 import type { Json } from "@/types/database";
 import type { Row, RowData } from "@/types/domain";
 import { computeRowReorder } from "@/lib/sheets/row-position";
-import type { RowFilterCondition } from "@/lib/sheets/row-view";
+import { ROW_VIEW_CAP, type RowFilterCondition } from "@/lib/sheets/row-view";
 
 function toRowJson(data: RowData): Json {
   return data as Json;
 }
-
-/**
- * Hard cap on how many rows a filtered/sorted view loads into the client at once.
- * Normal scrolling/browsing is windowed (listRowsWindow) and has no cap; this only
- * bounds a single sort/filter "view" so it stays responsive and memory-safe.
- */
-export const ROW_VIEW_CAP = 5000;
 
 async function getColumnKeySet(
   supabase: Awaited<ReturnType<typeof createClient>>,

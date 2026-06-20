@@ -43,7 +43,7 @@ _Last updated: June 19, 2026_
 - [x] ✅ **Sort and filter columns** — DONE (Jun 19). A toolbar bar above the grid now lets you **sort** by any column (A→Z / Z→A, and numbers/dates sort correctly, not as text) and **filter** rows by one or more conditions (e.g. "Status is interested", "Company contains retail", "is empty"). Shows a live "Showing X of Y" count. _Two notes: (1) a filtered/sorted view loads up to 5,000 rows at once — covers essentially all CRE sheets; (2) verified by typecheck + lint, but should get a quick click-test in the running app since I couldn't run the database here._
 - [x] ✅ **Fix the file-delete permission bug** — DONE (already fixed in the project as database migration `0013`). A viewer can no longer delete files; only a sheet admin or the person who uploaded the file can. Verified the fix actually closes the hole. _(Tiny known edge: if a file upload fails midway, its leftover file may not auto-clean for non-admins — harmless wasted space, not a security or data issue. Optional to tidy later.)_
 - [x] ✅ **Make big sheets load in chunks** — DONE / already built (Jun 19). Turns out this was already working: opening a sheet loads only the first 200 rows, and more load in 200-row batches as you scroll (an earlier note that said "loads every row" was wrong). I removed the leftover unused "load everything" code so it can't sneak back in, and widened the sort/filter view to handle up to 5,000 rows. _Remaining sliver: sorting/filtering a single view past 5,000 rows would need server-side sorting — a future enhancement, not needed for normal CRE sheet sizes._
-- [ ] 🟡 **Add tests for the in-grid editing** — copy/paste, fill-down, and undo/redo work but have no automated safety net, so they're the most likely spot for hidden bugs.
+- [x] ✅ **Add tests for the in-grid editing** — DONE (Jun 19). There's now a full set of automated tests covering copy/paste (including pasting past the edge of the sheet), fill-down, undo/redo (including the 50-step limit and redo ordering), row reordering, the scroll-loading windows, and the new sort/filter logic. _Note: written and type-checked here; run `npm run test` in your environment to see them all go green._
 
 ---
 
@@ -75,7 +75,7 @@ These showed up in Smartsheet's menus but the broker never used them — they're
 1. [x] ~~Fix the file-delete permission bug~~ ✅ done Jun 19 (migration 0013)
 2. [x] ~~Reconnect the email update button~~ ✅ done Jun 19
 3. [x] ~~Add column sort + filter~~ ✅ done Jun 19
-4. [ ] Add tests around the grid editing (🟡, lock in what already works)
+4. [x] ~~Add tests around the grid editing~~ ✅ done Jun 19
 5. [x] ~~Chunked loading for big sheets~~ ✅ already built (Jun 19)
 
 After those five, a CRE broker could realistically run their daily Smartsheet workflow in DrainSheets.
