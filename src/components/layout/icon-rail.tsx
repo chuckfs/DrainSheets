@@ -14,11 +14,13 @@ import {
 } from "@/lib/navigation";
 import { useSearchCommand } from "@/components/layout/search-command-provider";
 import { RailCreateMenu } from "@/components/layout/rail-create-menu";
+import { RailMoreMenu } from "@/components/layout/rail-more-menu";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { WorkspaceAvatar } from "@/components/workspaces/workspace-avatar";
 import { WorkspaceRailContext } from "./workspace-rail-context";
 
 export type RailWorkspace = { id: string; name: string };
@@ -119,19 +121,45 @@ function IconRail({
     [homeTab, pathname],
   );
 
+  const activeWorkspace = activeWorkspaceId
+    ? workspaces.find((workspace) => workspace.id === activeWorkspaceId)
+    : null;
+
   return (
     <aside
       className="hidden w-[72px] shrink-0 flex-col border-r border-rail-border bg-rail md:flex"
       aria-label="Main navigation"
     >
       <div className="flex h-12 items-center justify-center border-b border-rail-border">
-        <Link
-          href="/"
-          className="flex size-9 items-center justify-center rounded-lg bg-primary text-[13px] font-semibold tracking-tight text-primary-foreground transition-transform hover:scale-105"
-          aria-label="DrainSheets home"
-        >
-          DS
-        </Link>
+        {activeWorkspace ? (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Link
+                  href={`/workspaces/${activeWorkspace.id}`}
+                  className="transition-transform hover:scale-105"
+                  aria-label={activeWorkspace.name}
+                >
+                  <WorkspaceAvatar
+                    id={activeWorkspace.id}
+                    name={activeWorkspace.name}
+                    className="size-9 text-[11px]"
+                    active
+                  />
+                </Link>
+              }
+            />
+            <TooltipContent side="right">{activeWorkspace.name}</TooltipContent>
+          </Tooltip>
+        ) : (
+          <Link
+            href="/"
+            className="flex size-9 items-center justify-center rounded-lg bg-primary text-[13px] font-semibold tracking-tight text-primary-foreground transition-transform hover:scale-105"
+            aria-label="DrainSheets home"
+          >
+            DS
+          </Link>
+        )}
       </div>
 
       <nav className="flex flex-1 flex-col items-stretch gap-0.5 overflow-y-auto px-1 py-2">
@@ -155,6 +183,14 @@ function IconRail({
             return (
               <div key={item.id} className="pt-1">
                 <RailCreateMenu workspaces={workspaces} canCreateWorkspace={canCreateWorkspace} />
+              </div>
+            );
+          }
+
+          if (item.action === "more") {
+            return (
+              <div key={item.id}>
+                <RailMoreMenu workspaces={workspaces} />
               </div>
             );
           }
@@ -204,7 +240,7 @@ export function WorkspaceRailShell({
   }, [routeWorkspaceId]);
 
   return (
-    <WorkspaceRailContext.Provider value={{ setSheetWorkspaceId }}>
+    <WorkspaceRailContext.Provider value={{ activeWorkspaceId, setSheetWorkspaceId }}>
       <div className="flex min-h-screen">
         <IconRail
           workspaces={workspaces}

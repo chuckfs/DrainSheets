@@ -4,6 +4,7 @@ import {
   Clock,
   Home,
   LayoutGrid,
+  MoreHorizontal,
   Plus,
   Search,
   Settings,
@@ -15,7 +16,7 @@ export type RailNavItem = {
   label: string;
   icon: LucideIcon;
   href?: string;
-  action?: "search" | "create";
+  action?: "search" | "create" | "more";
 };
 
 export const railNavItems: RailNavItem[] = [
@@ -26,6 +27,7 @@ export const railNavItems: RailNavItem[] = [
   { id: "recents", href: "/?tab=recents", label: "Recents", icon: Clock },
   { id: "favorites", href: "/?tab=favorites", label: "Favorites", icon: Star },
   { id: "create", label: "Create", icon: Plus, action: "create" },
+  { id: "more", label: "More", icon: MoreHorizontal, action: "more" },
 ];
 
 export const railFooterItems: RailNavItem[] = [

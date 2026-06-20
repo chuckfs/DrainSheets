@@ -1,8 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { SignOutButton } from "@/components/auth/sign-out-button";
-import { HeaderSearchCommand } from "@/components/layout/search-command-provider";
 import { MobileNavSheet } from "@/components/layout/mobile-nav-sheet";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import type { Profile } from "@/types/domain";
@@ -23,7 +23,12 @@ export function SiteHeader({
         canCreateWorkspace={canCreateWorkspace}
       />
       <div className="min-w-0 flex-1 px-1">
-        <HeaderSearchCommand />
+        <Link
+          href="/"
+          className="truncate text-lg font-semibold tracking-tight text-foreground hover:opacity-80"
+        >
+          DrainSheets
+        </Link>
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <div className="hidden items-center gap-2 rounded-full border bg-card py-0.5 pl-0.5 pr-2.5 sm:flex">

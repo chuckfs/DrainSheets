@@ -12,6 +12,7 @@ import {
 } from "@/lib/navigation";
 import { useSearchCommand } from "@/components/layout/search-command-provider";
 import { RailCreateMenu } from "@/components/layout/rail-create-menu";
+import { RailMoreMenu } from "@/components/layout/rail-more-menu";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -68,6 +69,14 @@ export function MobileNavSheet({
               return (
                 <div key={item.id} className="px-1 py-1">
                   <RailCreateMenu workspaces={workspaces} canCreateWorkspace={canCreateWorkspace} />
+                </div>
+              );
+            }
+
+            if (item.action === "more") {
+              return (
+                <div key={item.id} className="px-1 py-1">
+                  <RailMoreMenu workspaces={workspaces} />
                 </div>
               );
             }

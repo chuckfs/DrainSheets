@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { FolderPlusIcon, FileSpreadsheetIcon, LayoutGridIcon, PlusIcon } from "lucide-react";
 import { listFolders } from "@/actions/folders";
+import { resolveRailWorkspaceId } from "@/lib/rail-workspace";
 import type { Folder } from "@/types/domain";
+import { useWorkspaceRail } from "@/components/layout/workspace-rail-context";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -28,7 +30,12 @@ export function RailCreateMenu({
   canCreateWorkspace: boolean;
 }) {
   const pathname = usePathname();
-  const workspaceId = pathname.match(/^\/workspaces\/([^/]+)/)?.[1] ?? workspaces[0]?.id ?? null;
+  const rail = useWorkspaceRail();
+  const workspaceId = resolveRailWorkspaceId(
+    rail?.activeWorkspaceId ?? null,
+    pathname,
+    workspaces,
+  );
   const [createWorkspaceOpen, setCreateWorkspaceOpen] = useState(false);
   const [createSheetOpen, setCreateSheetOpen] = useState(false);
   const [createFolderOpen, setCreateFolderOpen] = useState(false);

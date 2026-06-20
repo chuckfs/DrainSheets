@@ -2,7 +2,15 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { SearchDialog } from "@/components/search/search-dialog";
-import { SearchCommandTrigger } from "@/components/search/search-command";
+
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  const tag = target.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable;
+}
 
 type SearchCommandContextValue = {
   openSearch: () => void;
@@ -30,6 +38,18 @@ export function SearchCommandProvider({ children }: { children: React.ReactNode 
         return;
       }
 
+      if (
+        event.key === "/" &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.altKey &&
+        !isEditableTarget(event.target)
+      ) {
+        event.preventDefault();
+        setOpen(true);
+        return;
+      }
+
       if (event.key === "Escape") {
         setOpen(false);
       }
@@ -45,9 +65,4 @@ export function SearchCommandProvider({ children }: { children: React.ReactNode 
       <SearchDialog open={open} onOpenChange={setOpen} />
     </SearchCommandContext.Provider>
   );
-}
-
-export function HeaderSearchCommand() {
-  const { openSearch } = useSearchCommand();
-  return <SearchCommandTrigger onOpen={openSearch} />;
 }

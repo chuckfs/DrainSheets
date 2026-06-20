@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect } from "react";
 
 type WorkspaceRailContextValue = {
+  activeWorkspaceId: string | null;
   setSheetWorkspaceId: (workspaceId: string | null) => void;
 };
 
