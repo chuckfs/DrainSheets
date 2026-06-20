@@ -2,11 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark {
-  @media (prefers-color-scheme: dark) {
-    @slot;
-  }
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
@@ -130,8 +126,7 @@
   --share: #16a34a;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
+.dark {
   /* Linear for CRE — Dark (charcoal + purple) */
   --background: #0a0a0c;
   --foreground: #fafafa;
@@ -188,6 +183,7 @@
   }
   html {
     @apply font-sans;
+    color-scheme: light dark;
   }
 }
 
