@@ -5,7 +5,7 @@ import { MailIcon } from "lucide-react";
 import type { Json } from "@/types/database";
 import type { Row, SheetColumn } from "@/types/domain";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AccessContext } from "@/lib/access/effective-role";
@@ -69,8 +69,13 @@ export function RowDetailDrawer({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-xl">
         <SheetHeader className="border-b px-4 py-3">
-          <div className="flex items-center justify-between gap-2">
-            <SheetTitle className="truncate">{title}</SheetTitle>
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                {row ? `Row ${row.position + 1}` : "Row"}
+              </p>
+              <SheetTitle className="truncate text-base">{title}</SheetTitle>
+            </div>
             {canSendUpdate && (
               <Button
                 type="button"
@@ -97,14 +102,30 @@ export function RowDetailDrawer({
 
             <TabsContent value="details" className="min-h-0 flex-1">
               <ScrollArea className="h-full">
-                <div className="space-y-3 p-4">
-                  {columns.map((column) => (
-                    <div key={column.id} className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">{column.label}</Label>
-                      <p className="text-sm">{formatCellValue(rowData[column.key])}</p>
-                    </div>
-                  ))}
-                </div>
+                <dl className="divide-y p-2">
+                  {columns.map((column) => {
+                    const display = formatCellValue(rowData[column.key]);
+                    const empty = display === "—";
+                    return (
+                      <div
+                        key={column.id}
+                        className="flex gap-3 rounded-md px-2 py-2.5 transition-colors hover:bg-accent"
+                      >
+                        <dt className="w-32 shrink-0 pt-px text-xs font-medium text-muted-foreground">
+                          {column.label}
+                        </dt>
+                        <dd
+                          className={cn(
+                            "min-w-0 flex-1 break-words text-sm",
+                            empty && "text-muted-foreground",
+                          )}
+                        >
+                          {display}
+                        </dd>
+                      </div>
+                    );
+                  })}
+                </dl>
               </ScrollArea>
             </TabsContent>
 

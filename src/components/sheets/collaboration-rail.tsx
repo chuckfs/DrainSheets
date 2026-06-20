@@ -92,11 +92,13 @@ export function CollaborationRail({
         style={{ width }}
       >
         <div
-          className="absolute top-0 left-0 z-10 h-full w-1 cursor-col-resize hover:bg-primary/20"
+          className="absolute top-0 left-0 z-10 h-full w-1.5 cursor-col-resize after:absolute after:inset-y-0 after:left-0 after:w-[2px] after:bg-primary after:opacity-0 after:transition-opacity hover:after:opacity-100"
           onMouseDown={startResize}
           aria-hidden
         />
-        <div className="border-b px-3 py-2 text-sm font-medium">Collaboration</div>
+        <div className="border-b px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          Collaboration
+        </div>
         <div className="min-h-0 flex-1">{panel}</div>
       </aside>
 
