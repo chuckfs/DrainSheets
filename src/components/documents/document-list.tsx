@@ -11,6 +11,7 @@ import {
 } from "@/actions/documents";
 import type { AccessContext } from "@/lib/access/effective-role";
 import { hasAccessRole } from "@/lib/permissions/roles";
+import { PaperclipIcon } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,6 +84,7 @@ export function DocumentList({
   if (documents.length === 0) {
     return (
       <EmptyState
+        icon={PaperclipIcon}
         title="No attachments yet"
         description="Upload files to keep contracts, photos, and reference documents with this sheet."
       />

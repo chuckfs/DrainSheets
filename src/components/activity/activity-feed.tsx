@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ActivityIcon } from "lucide-react";
 import { toast } from "sonner";
 import { listActivity, type ActivityWithActor } from "@/actions/activity";
 import { formatActivityMessage, formatRelativeTime } from "@/lib/activity/format";
@@ -42,6 +43,7 @@ export function ActivityFeed({
           <p className="py-6 text-center text-sm text-muted-foreground">Loading activity…</p>
         ) : items.length === 0 ? (
           <EmptyState
+            icon={ActivityIcon}
             title="No activity yet"
             description="Edits, imports, and collaboration events will appear here as your team works."
           />

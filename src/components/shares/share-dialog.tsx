@@ -3,10 +3,11 @@
 import { useEffect, useState, useTransition } from "react";
 import { grantShare, listShares, revokeShare, updateShareRole, type ShareWithGrantee } from "@/actions/shares";
 import { grantableShareRoles } from "@/lib/access/effective-role";
-import { accessRoleLabel, orgRoleLabel } from "@/lib/permissions/sheet";
+import { accessRoleDescription, accessRoleLabel, orgRoleLabel } from "@/lib/permissions/sheet";
 import type { AccessRole, ShareResourceType } from "@/types/domain";
 import type { OrgUserSearchResult } from "@/actions/users";
 import { Button } from "@/components/ui/button";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import {
   Dialog,
   DialogContent,
@@ -176,6 +177,7 @@ export function ShareDialog({
                 Share
               </Button>
             </div>
+            <p className="text-xs text-muted-foreground">{accessRoleDescription(selectedRole)}</p>
           </div>
 
           <div className="space-y-2">
@@ -190,6 +192,7 @@ export function ShareDialog({
               <ul className="divide-y rounded-md border">
                 {shares.map((share) => (
                   <li key={share.id} className="flex items-center gap-2 px-3 py-2">
+                    <UserAvatar name={share.grantee.name} className="size-7 shrink-0" />
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-medium">{share.grantee.name}</div>
                       <div className="truncate text-xs text-muted-foreground">

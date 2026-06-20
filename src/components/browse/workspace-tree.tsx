@@ -241,6 +241,7 @@ export function WorkspaceTree({
     return (
       <>
         <EmptyState
+          icon={FileSpreadsheetIcon}
           title="No sheets yet"
           description="Create a folder or sheet to start organizing your workspace."
           action={

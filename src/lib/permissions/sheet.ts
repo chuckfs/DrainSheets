@@ -44,3 +44,15 @@ export function orgRoleLabel(role: OrgRole): string {
 export function accessRoleLabel(role: AccessRole): string {
   return role.charAt(0).toUpperCase() + role.slice(1);
 }
+
+const ACCESS_ROLE_DESCRIPTIONS: Record<AccessRole, string> = {
+  viewer: "Can view the sheet and its rows, but can't change anything.",
+  commenter: "Can view and add notes, but can't edit the data.",
+  editor: "Can view, comment, and edit rows and columns.",
+  admin: "Can edit, plus manage columns, sharing, and the sheet itself.",
+  owner: "Full control, including deleting the sheet.",
+};
+
+export function accessRoleDescription(role: AccessRole): string {
+  return ACCESS_ROLE_DESCRIPTIONS[role];
+}

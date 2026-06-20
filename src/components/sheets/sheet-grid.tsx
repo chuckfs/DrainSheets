@@ -2,6 +2,7 @@
 
 import { memo, useEffect, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { Rows3Icon } from "lucide-react";
 import type { Json } from "@/types/database";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
@@ -106,6 +107,7 @@ export function SheetGrid({
               <SmartsheetGridRow>
                 <SmartsheetGridCell colSpan={columnLayout.length + 1} className="p-0">
                   <EmptyState
+                    icon={Rows3Icon}
                     title="No rows yet"
                     description="Add your first row to start tracking data in this sheet."
                   />

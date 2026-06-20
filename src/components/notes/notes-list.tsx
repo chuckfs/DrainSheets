@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { createNote, deleteNote, updateNote, listNotes, type NoteWithAuthor } from "@/actions/notes";
 import type { AccessContext } from "@/lib/access/effective-role";
 import { canCreateNotes, canManageNote } from "@/lib/access/note-permissions";
+import { MessageSquareIcon } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { NoteCard } from "./note-card";
 import { NoteEditor } from "./note-editor";
@@ -52,6 +53,7 @@ export function NotesList({
   if (notes.length === 0) {
     return (
       <EmptyState
+        icon={MessageSquareIcon}
         title="No notes yet"
         description={
           canCreate

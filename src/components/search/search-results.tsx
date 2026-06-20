@@ -1,3 +1,4 @@
+import { SearchXIcon } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
   SEARCH_ENTITY_LABELS,
@@ -74,6 +75,7 @@ export function SearchResults({
   if (results.length === 0) {
     return (
       <EmptyState
+        icon={SearchXIcon}
         title="No search results"
         description={`Nothing matched “${trimmed}”. Try a different keyword or check spelling.`}
       />
