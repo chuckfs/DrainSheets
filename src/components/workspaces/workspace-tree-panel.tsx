@@ -11,12 +11,14 @@ export function WorkspaceTreePanel({
   sheets,
   access,
   activeSheetId,
+  favoriteSheetIds,
 }: {
   workspaceId: string;
   folders: Folder[];
   sheets: Sheet[];
   access: AccessContext;
   activeSheetId?: string;
+  favoriteSheetIds?: Set<string>;
 }) {
   return (
     <WorkspaceErrorBoundary>
@@ -26,6 +28,7 @@ export function WorkspaceTreePanel({
         sheets={sheets}
         access={access}
         activeSheetId={activeSheetId}
+        favoriteSheetIds={favoriteSheetIds}
       />
     </WorkspaceErrorBoundary>
   );

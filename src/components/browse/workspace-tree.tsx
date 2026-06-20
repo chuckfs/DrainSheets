@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { ShareDialog } from "@/components/shares/share-dialog";
 import { CreateFolderDialog } from "@/components/workspaces/create-folder-dialog";
 import { CreateSheetDialog } from "@/components/sheets/create-sheet-dialog";
+import { SheetFavoriteButton } from "@/components/sheets/sheet-favorite-button";
 import { ImportDialog } from "@/components/import/import-dialog";
 
 function FolderNode({
@@ -35,6 +36,7 @@ function FolderNode({
   activeSheetId,
   depth,
   onRefresh,
+  favoriteSheetIds,
 }: {
   node: WorkspaceTreeFolderNode;
   workspaceId: string;
@@ -43,6 +45,7 @@ function FolderNode({
   activeSheetId?: string;
   depth: number;
   onRefresh: () => void;
+  favoriteSheetIds: Set<string>;
 }) {
   const [expanded, setExpanded] = useState(true);
   const [createSheetOpen, setCreateSheetOpen] = useState(false);
@@ -131,6 +134,7 @@ function FolderNode({
               sheet={sheet}
               activeSheetId={activeSheetId}
               depth={depth + 1}
+              favorited={favoriteSheetIds.has(sheet.id)}
             />
           ))}
           {node.folders.map((child) => (
@@ -143,6 +147,7 @@ function FolderNode({
               activeSheetId={activeSheetId}
               depth={depth + 1}
               onRefresh={onRefresh}
+              favoriteSheetIds={favoriteSheetIds}
             />
           ))}
         </ul>
@@ -185,29 +190,36 @@ function SheetRow({
   sheet,
   activeSheetId,
   depth,
+  favorited,
 }: {
   sheet: { id: string; name: string };
   activeSheetId?: string;
   depth: number;
+  favorited?: boolean;
 }) {
   const active = sheet.id === activeSheetId;
 
   return (
     <li>
-      <Link
-        href={`/sheets/${sheet.id}`}
+      <div
         className={cn(
-          "mx-1 flex items-center gap-2 rounded-md py-1.5 pr-3 text-sm transition-colors",
+          "group mx-1 flex items-center gap-1 rounded-md py-1.5 pr-2 text-sm transition-colors",
           active ? "bg-primary/10 font-medium text-primary" : "hover:bg-accent",
         )}
         style={{ paddingLeft: `${depth * 12 + 28}px` }}
-        aria-current={active ? "page" : undefined}
       >
-        <FileSpreadsheetIcon
-          className={cn("size-4 shrink-0", active ? "text-primary" : "text-muted-foreground")}
-        />
-        <span className="truncate">{sheet.name}</span>
-      </Link>
+        <Link
+          href={`/sheets/${sheet.id}`}
+          className="flex min-w-0 flex-1 items-center gap-2"
+          aria-current={active ? "page" : undefined}
+        >
+          <FileSpreadsheetIcon
+            className={cn("size-4 shrink-0", active ? "text-primary" : "text-muted-foreground")}
+          />
+          <span className="truncate">{sheet.name}</span>
+        </Link>
+        <SheetFavoriteButton sheetId={sheet.id} initialFavorited={Boolean(favorited)} />
+      </div>
     </li>
   );
 }
@@ -218,16 +230,19 @@ export function WorkspaceTree({
   sheets,
   access,
   activeSheetId,
+  favoriteSheetIds,
 }: {
   workspaceId: string;
   folders: Folder[];
   sheets: Sheet[];
   access: AccessContext;
   activeSheetId?: string;
+  favoriteSheetIds?: Set<string>;
 }) {
   const router = useRouter();
   const [createSheetOpen, setCreateSheetOpen] = useState(false);
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
+  const favorites = favoriteSheetIds ?? new Set<string>();
 
   const tree = useMemo(() => buildWorkspaceTree(folders, sheets), [folders, sheets]);
 
@@ -287,10 +302,17 @@ export function WorkspaceTree({
             activeSheetId={activeSheetId}
             depth={0}
             onRefresh={handleRefresh}
+            favoriteSheetIds={favorites}
           />
         ))}
         {tree.sheets.map((sheet) => (
-          <SheetRow key={sheet.id} sheet={sheet} activeSheetId={activeSheetId} depth={0} />
+          <SheetRow
+            key={sheet.id}
+            sheet={sheet}
+            activeSheetId={activeSheetId}
+            depth={0}
+            favorited={favorites.has(sheet.id)}
+          />
         ))}
       </ul>
     </div>

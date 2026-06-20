@@ -16,6 +16,7 @@
     "test:templates": "vitest run tests/templates",
     "test:import": "vitest run tests/import",
     "test:sheets": "vitest run tests/sheets",
+    "test:workspaces": "vitest run tests/workspaces",
     "test:benchmarks": "vitest run tests/benchmarks",
     "test:search": "vitest run tests/search",
     "test:notes": "vitest run tests/notes",

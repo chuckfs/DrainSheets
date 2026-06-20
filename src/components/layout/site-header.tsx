@@ -7,10 +7,16 @@ import { MobileNavSheet } from "@/components/layout/mobile-nav-sheet";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import type { Profile } from "@/types/domain";
 
-export function SiteHeader({ profile }: { profile: Profile }) {
+export function SiteHeader({
+  profile,
+  workspaces = [],
+}: {
+  profile: Profile;
+  workspaces?: Array<{ id: string; name: string }>;
+}) {
   return (
     <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-background px-3">
-      <MobileNavSheet />
+      <MobileNavSheet workspaces={workspaces} />
       <div className="min-w-0 flex-1 px-1">
         <SearchCommand />
       </div>

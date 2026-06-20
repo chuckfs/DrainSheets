@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { listFavoriteSheetIds } from "@/actions/favorites";
 import { getWorkspaceAccessContext } from "@/actions/access";
 import { listFolders } from "@/actions/folders";
 import { listSheets } from "@/actions/sheets";
@@ -19,12 +20,13 @@ export default async function WorkspacePage({
 }) {
   const { workspaceId } = await params;
   const profile = await requireProfile();
-  const [workspace, access, sheets, workspaces, folders] = await Promise.all([
+  const [workspace, access, sheets, workspaces, folders, favoriteSheetIds] = await Promise.all([
     getWorkspace(workspaceId),
     getWorkspaceAccessContext(workspaceId),
     listSheets(workspaceId),
     listWorkspaces(),
     listFolders(workspaceId),
+    listFavoriteSheetIds(),
   ]);
 
   if (!workspace || !access.canView) {
@@ -50,6 +52,7 @@ export default async function WorkspacePage({
         folders={folders}
         sheets={sheets}
         access={access}
+        favoriteSheetIds={new Set(favoriteSheetIds)}
       />
     </ListPageShell>
   );

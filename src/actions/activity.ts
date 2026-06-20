@@ -47,3 +47,33 @@ export async function listActivity(
     actor: (entry.actor as ActivityWithActor["actor"]) ?? null,
   }));
 }
+
+export async function listOrgActivity(limit = 20): Promise<ActivityWithActor[]> {
+  const profile = await requireProfile();
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("activity")
+    .select(
+      `
+      *,
+      actor:profiles!activity_actor_id_fkey (
+        id,
+        name,
+        email
+      )
+    `,
+    )
+    .eq("org_id", profile.org_id)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? []).map((entry) => ({
+    ...entry,
+    actor: (entry.actor as ActivityWithActor["actor"]) ?? null,
+  }));
+}

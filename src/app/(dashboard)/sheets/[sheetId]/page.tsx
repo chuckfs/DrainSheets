@@ -7,6 +7,7 @@ import { trackRecentSheetView } from "@/actions/search";
 import { getSheetTemplateProvenance } from "@/actions/templates";
 import { requireProfile } from "@/lib/auth/guards";
 import { ROW_WINDOW_SIZE } from "@/lib/sheets/row-window";
+import { SetActiveWorkspace } from "@/components/layout/workspace-rail-context";
 import { TrackRecentSheetView } from "@/components/search/track-recent-sheet-view";
 import { SheetView } from "@/components/sheets/sheet-view";
 
@@ -37,6 +38,7 @@ export default async function SheetPage({
 
   return (
     <>
+      <SetActiveWorkspace workspaceId={sheet.workspace_id} />
       <TrackRecentSheetView
         sheetId={sheet.id}
         sheetName={sheet.name}

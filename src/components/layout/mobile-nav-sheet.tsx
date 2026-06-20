@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MenuIcon } from "lucide-react";
-import { isNavActive, mainNavItems } from "@/lib/navigation";
+import { MenuIcon, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,9 +12,14 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { WorkspaceAvatar } from "@/components/workspaces/workspace-avatar";
 
-export function MobileNavSheet() {
+type NavWorkspace = { id: string; name: string };
+
+export function MobileNavSheet({ workspaces }: { workspaces: NavWorkspace[] }) {
   const pathname = usePathname();
+  const onHome = pathname === "/";
+  const activeWorkspaceId = pathname.match(/^\/workspaces\/([^/]+)/)?.[1] ?? null;
 
   return (
     <Sheet>
@@ -31,13 +35,27 @@ export function MobileNavSheet() {
           <SheetTitle className="text-left text-base">DrainSheets</SheetTitle>
         </SheetHeader>
         <nav className="flex flex-col gap-0.5 p-2">
-          {mainNavItems.map((item) => {
-            const active = isNavActive(pathname, item);
-            const Icon = item.icon;
+          <Link
+            href="/"
+            className={cn(
+              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium",
+              onHome
+                ? "bg-muted text-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            )}
+          >
+            <span className="flex size-7 items-center justify-center rounded-md bg-primary/10 text-xs font-semibold text-primary">
+              DS
+            </span>
+            Home
+          </Link>
+
+          {workspaces.map((workspace) => {
+            const active = workspace.id === activeWorkspaceId;
             return (
               <Link
-                key={item.href}
-                href={item.href}
+                key={workspace.id}
+                href={`/workspaces/${workspace.id}`}
                 className={cn(
                   "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium",
                   active
@@ -45,11 +63,24 @@ export function MobileNavSheet() {
                     : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >
-                <Icon className="size-4 shrink-0" aria-hidden />
-                {item.label}
+                <WorkspaceAvatar id={workspace.id} name={workspace.name} className="size-7 text-[10px]" />
+                <span className="truncate">{workspace.name}</span>
               </Link>
             );
           })}
+
+          <Link
+            href="/settings"
+            className={cn(
+              "mt-2 flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium",
+              pathname.startsWith("/settings")
+                ? "bg-muted text-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            )}
+          >
+            <Settings className="size-4 shrink-0" aria-hidden />
+            Settings
+          </Link>
         </nav>
       </SheetContent>
     </Sheet>
