@@ -599,6 +599,32 @@ Properties are archived, not deleted, in MVP. Hard deletes are Owner-only and re
 
 ---
 
+# Sheet Views (G1)
+
+Purpose:
+
+Named saved views on a sheet — sort, filters, and hidden row/column snapshots.
+
+Fields:
+
+id, sheet_id, org_id, name, sort (JSONB nullable), filters (JSONB), hidden_column_keys (TEXT[]), hidden_row_ids (UUID[]), created_by, created_at, updated_at
+
+Unique constraint: `(sheet_id, name)`.
+
+---
+
+# Visibility (G1)
+
+`sheet_columns.is_hidden` — column hidden from grid until unhidden.
+
+`rows.is_hidden` — row hidden from grid until unhidden or "show hidden rows" is enabled.
+
+`rows.height` — optional row height in pixels (24–400). NULL uses the default 32px height.
+
+`rows.styles` — JSONB map of column key → cell format (`bold`, `italic`, `underline`, `align`, `color`, `backgroundColor`). Defaults to `{}`.
+
+---
+
 # Future Tables (Not MVP)
 
 email_logs

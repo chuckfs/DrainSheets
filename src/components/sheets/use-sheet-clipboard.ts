@@ -114,3 +114,5 @@ export function useSheetClipboard(
     handleKeyDown,
   };
 }
+
+export type SheetClipboardController = ReturnType<typeof useSheetClipboard>;

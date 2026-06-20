@@ -4,7 +4,10 @@ export type GridKeyboardShortcut =
   | "fill_down"
   | "copy"
   | "cut"
-  | "paste";
+  | "paste"
+  | "bold"
+  | "italic"
+  | "underline";
 
 export function resolveGridKeyboardShortcut(input: {
   key: string;
@@ -37,6 +40,18 @@ export function resolveGridKeyboardShortcut(input: {
 
   if (key === "v") {
     return "paste";
+  }
+
+  if (key === "b") {
+    return "bold";
+  }
+
+  if (key === "i") {
+    return "italic";
+  }
+
+  if (key === "u") {
+    return "underline";
   }
 
   return null;

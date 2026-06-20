@@ -10,13 +10,20 @@ import {
   createColumnSchema,
   deleteColumnSchema,
   moveColumnSchema,
+  unhideAllColumnsSchema,
   updateColumnConfigSchema,
+  updateColumnHiddenSchema,
   updateColumnLabelSchema,
+  updateColumnNumericConfigSchema,
+  updateColumnTypeSchema,
   updateColumnWidthSchema,
 } from "@/lib/validations/column";
-import type { ColumnType, SheetColumn } from "@/types/domain";
+import type { ColumnType, Row, SheetColumn } from "@/types/domain";
 import { getDefaultColumnWidth } from "@/lib/sheets/column-widths";
 import { selectOptionsToConfig, type SelectOptionConfig } from "@/lib/sheets/select-options";
+import { buildNumericConfig, defaultConfigForType } from "@/lib/sheets/column-config";
+import { coerceColumnValues } from "@/lib/sheets/coerce-column-type";
+import { batchUpdateRows } from "@/actions/rows";
 import type { Json } from "@/types/database";
 
 export async function listColumns(sheetId: string): Promise<SheetColumn[]> {
@@ -279,6 +286,203 @@ export async function updateColumnConfig(
 
   revalidatePath(`/sheets/${column.sheet_id}`);
   return actionSuccess(column);
+}
+
+export async function updateColumnNumericConfig(
+  columnId: string,
+  decimals: number,
+): Promise<ActionResult<SheetColumn>> {
+  await requireProfile();
+  const parsed = updateColumnNumericConfigSchema.safeParse({ columnId, decimals });
+
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "Invalid column config");
+  }
+
+  const supabase = await createClient();
+  const { data: existing, error: existingError } = await supabase
+    .from("sheet_columns")
+    .select("*")
+    .eq("id", columnId)
+    .single();
+
+  if (existingError) {
+    return actionError(existingError.message);
+  }
+
+  if (existing.type !== "number" && existing.type !== "currency") {
+    return actionError("Decimal places apply only to number and currency columns");
+  }
+
+  const config = buildNumericConfig(existing, parsed.data.decimals);
+  const { data: column, error } = await supabase
+    .from("sheet_columns")
+    .update({ config })
+    .eq("id", columnId)
+    .select("*")
+    .single();
+
+  if (error) {
+    return actionError(error.message);
+  }
+
+  revalidatePath(`/sheets/${column.sheet_id}`);
+  return actionSuccess(column);
+}
+
+export async function updateColumnHidden(
+  columnId: string,
+  isHidden: boolean,
+): Promise<ActionResult<SheetColumn>> {
+  await requireProfile();
+  const parsed = updateColumnHiddenSchema.safeParse({ columnId, isHidden });
+
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "Invalid column");
+  }
+
+  const supabase = await createClient();
+  const { data: column, error } = await supabase
+    .from("sheet_columns")
+    .update({ is_hidden: parsed.data.isHidden })
+    .eq("id", columnId)
+    .select("*")
+    .single();
+
+  if (error) {
+    return actionError(error.message);
+  }
+
+  revalidatePath(`/sheets/${column.sheet_id}`);
+  return actionSuccess(column);
+}
+
+export async function unhideAllColumns(sheetId: string): Promise<ActionResult<{ updated: number }>> {
+  await requireProfile();
+  const parsed = unhideAllColumnsSchema.safeParse({ sheetId });
+
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "Invalid sheet");
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("sheet_columns")
+    .update({ is_hidden: false })
+    .eq("sheet_id", parsed.data.sheetId)
+    .eq("is_hidden", true)
+    .select("id");
+
+  if (error) {
+    return actionError(error.message);
+  }
+
+  revalidatePath(`/sheets/${parsed.data.sheetId}`);
+  return actionSuccess({ updated: data?.length ?? 0 });
+}
+
+async function listAllRowsForColumnCoercion(sheetId: string): Promise<Row[]> {
+  const supabase = await createClient();
+  const rows: Row[] = [];
+  let offset = 0;
+  const batchSize = 1000;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from("rows")
+      .select("*")
+      .eq("sheet_id", sheetId)
+      .order("position", { ascending: true })
+      .range(offset, offset + batchSize - 1);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    if (!data || data.length === 0) {
+      break;
+    }
+
+    rows.push(...data);
+    if (data.length < batchSize) {
+      break;
+    }
+
+    offset += batchSize;
+  }
+
+  return rows;
+}
+
+export async function updateColumnType(
+  columnId: string,
+  type: ColumnType,
+): Promise<ActionResult<SheetColumn>> {
+  await requireProfile();
+  const parsed = updateColumnTypeSchema.safeParse({ columnId, type });
+
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "Invalid column type");
+  }
+
+  const supabase = await createClient();
+  const { data: column, error: columnError } = await supabase
+    .from("sheet_columns")
+    .select("*")
+    .eq("id", columnId)
+    .single();
+
+  if (columnError) {
+    return actionError(columnError.message);
+  }
+
+  if (column.type === parsed.data.type) {
+    return actionSuccess(column);
+  }
+
+  const rows = await listAllRowsForColumnCoercion(column.sheet_id);
+  const updates = coerceColumnValues(rows, column.key, parsed.data.type);
+
+  if (updates.length > 0) {
+    const batchResult = await batchUpdateRows(
+      updates.map((entry) => ({ rowId: entry.rowId, data: entry.data })),
+      { operation: "column_type_change", sheetId: column.sheet_id },
+    );
+
+    if (!batchResult.success) {
+      return actionError(batchResult.error);
+    }
+  }
+
+  const { data: updated, error } = await supabase
+    .from("sheet_columns")
+    .update({
+      type: parsed.data.type,
+      config: defaultConfigForType(parsed.data.type),
+      width: getDefaultColumnWidth(parsed.data.type),
+    })
+    .eq("id", columnId)
+    .select("*")
+    .single();
+
+  if (error) {
+    return actionError(error.message);
+  }
+
+  const context = await getSheetActivityContext(column.sheet_id);
+  if (context) {
+    await logActivityEvent({
+      entityType: "column",
+      entityId: column.id,
+      action: "updated",
+      workspaceId: context.workspaceId,
+      sheetId: column.sheet_id,
+      metadata: { column_label: column.label, column_type: parsed.data.type },
+    });
+  }
+
+  revalidatePath(`/sheets/${column.sheet_id}`);
+  return actionSuccess(updated);
 }
 
 export async function updateColumnWidth(

@@ -742,33 +742,42 @@ export type Database = {
           created_at: string
           created_by: string | null
           data: Json
+          height: number | null
           id: string
+          is_hidden: boolean
           org_id: string
           position: number
           search_vector: unknown
           sheet_id: string
+          styles: Json
           updated_at: string
         }
         Insert: {
           created_at?: string
           created_by?: string | null
           data?: Json
+          height?: number | null
           id?: string
+          is_hidden?: boolean
           org_id: string
           position: number
           search_vector?: unknown
           sheet_id: string
+          styles?: Json
           updated_at?: string
         }
         Update: {
           created_at?: string
           created_by?: string | null
           data?: Json
+          height?: number | null
           id?: string
+          is_hidden?: boolean
           org_id?: string
           position?: number
           search_vector?: unknown
           sheet_id?: string
+          styles?: Json
           updated_at?: string
         }
         Relationships: [
@@ -855,6 +864,7 @@ export type Database = {
           config: Json
           created_at: string
           id: string
+          is_hidden: boolean
           is_pinned: boolean
           is_primary: boolean
           key: string
@@ -870,6 +880,7 @@ export type Database = {
           config?: Json
           created_at?: string
           id?: string
+          is_hidden?: boolean
           is_pinned?: boolean
           is_primary?: boolean
           key: string
@@ -885,6 +896,7 @@ export type Database = {
           config?: Json
           created_at?: string
           id?: string
+          is_hidden?: boolean
           is_pinned?: boolean
           is_primary?: boolean
           key?: string
@@ -909,41 +921,6 @@ export type Database = {
             columns: ["sheet_id"]
             isOneToOne: false
             referencedRelation: "sheets"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      sheet_template_versions: {
-        Row: {
-          columns: Json
-          created_at: string
-          id: string
-          seed_rows: Json | null
-          template_id: string
-          version: number
-        }
-        Insert: {
-          columns: Json
-          created_at?: string
-          id?: string
-          seed_rows?: Json | null
-          template_id: string
-          version: number
-        }
-        Update: {
-          columns?: Json
-          created_at?: string
-          id?: string
-          seed_rows?: Json | null
-          template_id?: string
-          version?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "sheet_template_versions_template_id_fkey"
-            columns: ["template_id"]
-            isOneToOne: false
-            referencedRelation: "sheet_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -1006,6 +983,41 @@ export type Database = {
           },
         ]
       }
+      sheet_template_versions: {
+        Row: {
+          columns: Json
+          created_at: string
+          id: string
+          seed_rows: Json | null
+          template_id: string
+          version: number
+        }
+        Insert: {
+          columns: Json
+          created_at?: string
+          id?: string
+          seed_rows?: Json | null
+          template_id: string
+          version: number
+        }
+        Update: {
+          columns?: Json
+          created_at?: string
+          id?: string
+          seed_rows?: Json | null
+          template_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sheet_template_versions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "sheet_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sheet_templates: {
         Row: {
           created_at: string
@@ -1056,6 +1068,70 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sheet_views: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          filters: Json
+          hidden_column_keys: string[]
+          hidden_row_ids: string[]
+          id: string
+          name: string
+          org_id: string
+          sheet_id: string
+          sort: Json | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          filters?: Json
+          hidden_column_keys?: string[]
+          hidden_row_ids?: string[]
+          id?: string
+          name: string
+          org_id: string
+          sheet_id: string
+          sort?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          filters?: Json
+          hidden_column_keys?: string[]
+          hidden_row_ids?: string[]
+          id?: string
+          name?: string
+          org_id?: string
+          sheet_id?: string
+          sort?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sheet_views_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sheet_views_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sheet_views_sheet_id_fkey"
+            columns: ["sheet_id"]
+            isOneToOne: false
+            referencedRelation: "sheets"
             referencedColumns: ["id"]
           },
         ]

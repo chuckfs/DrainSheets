@@ -212,6 +212,29 @@ If demand for any P3 item appears during the pilot, revisit with real usage data
 
 ---
 
+## P4 — Sheet toolbar parity (phased) `[~]`
+
+> Smartsheet-style **interaction ribbon** above the grid. Phase 1 ships discoverable undo/copy/paste/fill, drag fill handle, context menus, keyboard gaps, and freeze panes. Formatting, formulas, and alternate views remain **post-pilot** unless broker usage proves demand.
+
+### P4-1 · Interaction ribbon (Phase 1) `[x]`
+- **Build:** `SheetRibbonToolbar` (undo/redo, copy/cut/paste, fill, filter toggle, freeze panes, overflow placeholder).
+- **Build:** Drag fill handle on active cell with multi-row fill + batch undo history.
+- **Build:** Right-click context menus on cells, row headers, and column headers.
+- **Build:** Keyboard gaps — Delete/Backspace clear, type-to-edit, Escape deselect.
+- **Touches:** `src/components/sheets/sheet-ribbon-toolbar.tsx`, `fill-handle.tsx`, `grid-context-menu.tsx`, `use-sheet-grid.ts`, `use-sheet-keyboard.ts`.
+
+### P4-2 · Data tools ribbon (Phase 2) `[x]`
+- Type switcher, decimal controls, saved filter views, hide/unhide, auto-save indicator, export CSV/XLSX, print PDF.
+
+### P4-3 · Hierarchy + collaboration ribbon (Phase 3) `[ ]`
+- Row indent/outdent, multi-level sort, cell history panel, realtime presence, view switcher (grid-first).
+
+### P4-4 · Formatting + formulas (Future tier — P3 rejects) `[~]`
+- `[x]` Cell `styles` JSONB on rows, formatting toolbar (bold/italic/underline, align, text/fill colors, clear), undo/redo, ⌘B/⌘I/⌘U.
+- `[ ]` Formula bar/engine, conditional formatting, Gantt/Calendar/Kanban — still deferred until post-pilot feedback.
+
+---
+
 ## Suggested execution order (within the priority constraint)
 
 Although tiers aren't calendar-bound, a sensible build order is:

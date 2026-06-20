@@ -5,6 +5,7 @@ import {
   parseSelectOptionsFromConfig,
   resolveSelectColor,
 } from "@/lib/sheets/select-options";
+import { getColumnDecimals, getCurrencyCode } from "@/lib/sheets/column-config";
 
 export type SelectOption = { value: string; label: string; color?: string };
 
@@ -14,16 +15,6 @@ export function getSelectOptions(column: SheetColumn): SelectOption[] {
     label: option.label,
     color: resolveSelectColor(option.color),
   }));
-}
-
-export function getCurrencyCode(column: SheetColumn): string {
-  const config = column.config;
-  if (!config || typeof config !== "object" || Array.isArray(config)) {
-    return "USD";
-  }
-
-  const currency = (config as { currency?: unknown }).currency;
-  return typeof currency === "string" && currency.length > 0 ? currency : "USD";
 }
 
 export function isEmptyValue(value: Json | undefined): boolean {
@@ -59,15 +50,24 @@ export function formatDisplayValue(column: SheetColumn, value: Json | undefined)
       if (Number.isNaN(numeric)) {
         return String(value);
       }
+      const decimals = getColumnDecimals(column);
       return new Intl.NumberFormat(undefined, {
         style: "currency",
         currency: getCurrencyCode(column),
-        maximumFractionDigits: 2,
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
       }).format(numeric);
     }
     case "number": {
       const numeric = typeof value === "number" ? value : Number(value);
-      return Number.isNaN(numeric) ? String(value) : String(numeric);
+      if (Number.isNaN(numeric)) {
+        return String(value);
+      }
+      const decimals = getColumnDecimals(column);
+      return new Intl.NumberFormat(undefined, {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+      }).format(numeric);
     }
     case "date":
       return String(value);

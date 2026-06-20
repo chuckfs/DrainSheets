@@ -49,6 +49,25 @@ export const updateColumnConfigSchema = z.object({
   }),
 });
 
+export const updateColumnNumericConfigSchema = z.object({
+  columnId: z.string().uuid(),
+  decimals: z.number().int().min(0).max(6),
+});
+
+export const updateColumnHiddenSchema = z.object({
+  columnId: z.string().uuid(),
+  isHidden: z.boolean(),
+});
+
+export const updateColumnTypeSchema = z.object({
+  columnId: z.string().uuid(),
+  type: columnTypeSchema,
+});
+
+export const unhideAllColumnsSchema = z.object({
+  sheetId: z.string().uuid(),
+});
+
 export const updateColumnWidthSchema = z.object({
   columnId: z.string().uuid(),
   width: z.number().int().min(60).max(800),

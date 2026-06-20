@@ -35,6 +35,20 @@ export const getRowSchema = z.object({
   rowId: z.string().uuid(),
 });
 
+export const updateRowHiddenSchema = z.object({
+  rowId: z.string().uuid(),
+  isHidden: z.boolean(),
+});
+
+export const unhideAllRowsSchema = z.object({
+  sheetId: z.string().uuid(),
+});
+
+export const updateRowHeightSchema = z.object({
+  rowId: z.string().uuid(),
+  height: z.number().int().min(24).max(400).nullable(),
+});
+
 export type CreateRowInput = z.infer<typeof createRowSchema>;
 export type UpdateRowInput = z.infer<typeof updateRowSchema>;
 export type DeleteRowInput = z.infer<typeof deleteRowSchema>;

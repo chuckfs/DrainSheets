@@ -23,5 +23,6 @@ export type DocumentVersion = Database["public"]["Tables"]["document_versions"][
 export type Note = Database["public"]["Tables"]["notes"]["Row"];
 export type Invitation = Database["public"]["Tables"]["invitations"]["Row"];
 export type Activity = Database["public"]["Tables"]["activity"]["Row"];
+export type SheetView = Database["public"]["Tables"]["sheet_views"]["Row"];
 
 export type RowData = Record<string, Json | undefined>;

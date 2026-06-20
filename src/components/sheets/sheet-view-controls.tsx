@@ -30,6 +30,8 @@ export function SheetViewControls({
   total,
   capped,
   loading,
+  filterOpen: controlledFilterOpen,
+  onFilterOpenChange,
 }: {
   columns: SheetColumn[];
   sort: RowSort | null;
@@ -40,8 +42,12 @@ export function SheetViewControls({
   total: number;
   capped: boolean;
   loading: boolean;
+  filterOpen?: boolean;
+  onFilterOpenChange?: (open: boolean) => void;
 }) {
-  const [filterOpen, setFilterOpen] = useState(false);
+  const [internalFilterOpen, setInternalFilterOpen] = useState(false);
+  const filterOpen = controlledFilterOpen ?? internalFilterOpen;
+  const setFilterOpen = onFilterOpenChange ?? setInternalFilterOpen;
   const [draft, setDraft] = useState<RowFilterCondition[]>(filters);
 
   // Keep the draft in sync when applied filters change elsewhere (e.g. cleared).
@@ -136,7 +142,7 @@ export function SheetViewControls({
           size="sm"
           variant={filters.length > 0 ? "default" : "outline"}
           className="h-7 gap-1 text-xs"
-          onClick={() => setFilterOpen((open) => !open)}
+          onClick={() => setFilterOpen(!filterOpen)}
         >
           <FilterIcon className="size-3.5" />
           Filter{filters.length > 0 ? ` (${filters.length})` : ""}

@@ -34,8 +34,27 @@ export type ColumnRenameHistoryEntry = {
   after: string;
 };
 
+export type BatchCellHistoryEntry = {
+  type: "batch_cell";
+  cells: CellHistoryEntry[];
+};
+
+export type StyleHistoryEntry = {
+  rowId: string;
+  columnKey: string;
+  before: Json | null;
+  after: Json | null;
+};
+
+export type BatchStyleHistoryEntry = {
+  type: "batch_style";
+  cells: StyleHistoryEntry[];
+};
+
 export type SheetHistoryEntry =
   | CellHistoryEntry
+  | BatchCellHistoryEntry
+  | BatchStyleHistoryEntry
   | RowAddHistoryEntry
   | RowDeleteHistoryEntry
   | ColumnAddHistoryEntry
@@ -93,5 +112,12 @@ export function resolveHistoryCellValue(
   entry: CellHistoryEntry,
   direction: "undo" | "redo",
 ): Json | undefined {
+  return direction === "undo" ? entry.before : entry.after;
+}
+
+export function resolveHistoryStyleValue(
+  entry: StyleHistoryEntry,
+  direction: "undo" | "redo",
+): Json | null {
   return direction === "undo" ? entry.before : entry.after;
 }

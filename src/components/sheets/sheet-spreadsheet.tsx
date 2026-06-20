@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { getContactsByIds, searchContacts, type ContactPickerItem } from "@/actions/contacts";
@@ -24,10 +24,14 @@ import {
   useCollaborationRail,
 } from "./collaboration-rail";
 import { RowDetailDrawer } from "./row-detail-drawer";
+import { SheetClipboardProvider } from "./sheet-clipboard-context";
 import { SheetContactContext } from "./sheet-contact-context";
+import { SheetFormatToolbar } from "./sheet-format-toolbar";
 import { SheetGrid } from "./sheet-grid";
+import { SheetRibbonToolbar } from "./sheet-ribbon-toolbar";
 import { SheetToolbar } from "./sheet-toolbar";
 import { SheetViewControls } from "./sheet-view-controls";
+import type { SheetViewState } from "./sheet-view-picker";
 import { useSheetClipboard } from "./use-sheet-clipboard";
 import { useSheetGrid } from "./use-sheet-grid";
 import { useSheetKeyboard } from "./use-sheet-keyboard";
@@ -89,6 +93,7 @@ export function SheetSpreadsheet({
   const [viewRows, setViewRows] = useState<Row[] | null>(null);
   const [viewTotal, setViewTotal] = useState(0);
   const [viewLoading, setViewLoading] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
   const viewActive = isRowViewActive(sort, filters);
 
   useEffect(() => {
@@ -137,8 +142,8 @@ export function SheetSpreadsheet({
     readOnly: !access.canEdit,
   });
 
-  const { handleKeyDown: handleClipboardKeyDown } = useSheetClipboard(grid);
-  useSheetKeyboard(grid, handleClipboardKeyDown);
+  const clipboard = useSheetClipboard(grid);
+  useSheetKeyboard(grid, clipboard.handleKeyDown);
 
   useEffect(() => {
     setRowDrawerOpen(Boolean(initialRowId));
@@ -217,6 +222,40 @@ export function SheetSpreadsheet({
     [contactsById],
   );
 
+  const viewState = useMemo<SheetViewState>(
+    () => ({
+      sort,
+      filters,
+      hiddenColumnKeys: grid.columns.filter((column) => column.is_hidden).map((column) => column.key),
+      hiddenRowIds: grid.rows
+        .filter((row): row is Row => row !== null && row.is_hidden)
+        .map((row) => row.id),
+    }),
+    [filters, grid.columns, grid.rows, sort],
+  );
+
+  const applyViewState = useCallback(
+    async (state: SheetViewState) => {
+      setSort(state.sort);
+      setFilters(state.filters);
+
+      const columnIdsToHide = state.hiddenColumnKeys
+        .map((key) => grid.columns.find((column) => column.key === key)?.id)
+        .filter((columnId): columnId is string => Boolean(columnId));
+
+      await grid.unhideAllColumns();
+      for (const columnId of columnIdsToHide) {
+        await grid.hideColumnById(columnId);
+      }
+
+      await grid.unhideAllRows();
+      for (const rowId of state.hiddenRowIds) {
+        await grid.hideRowById(rowId);
+      }
+    },
+    [grid],
+  );
+
   function openRow(rowId: string) {
     const params = new URLSearchParams(searchParams.toString());
     params.set("row", rowId);
@@ -240,6 +279,7 @@ export function SheetSpreadsheet({
 
   return (
     <SheetContactContext.Provider value={contactContextValue}>
+      <SheetClipboardProvider clipboard={clipboard}>
       <ListPageShell
         header={
           <>
@@ -250,6 +290,16 @@ export function SheetSpreadsheet({
               templateProvenance={templateProvenance}
               collaborationToggle={<CollaborationRailToggle onOpen={() => setMobileOpen(true)} />}
             />
+            <SheetRibbonToolbar
+              grid={grid}
+              clipboard={clipboard}
+              sheetId={sheet.id}
+              viewState={viewState}
+              onApplyViewState={(state) => void applyViewState(state)}
+              filterActive={filters.length > 0 || filterOpen}
+              onToggleFilter={() => setFilterOpen((open) => !open)}
+            />
+            <SheetFormatToolbar grid={grid} />
             <SheetViewControls
               columns={grid.columns}
               sort={sort}
@@ -260,6 +310,8 @@ export function SheetSpreadsheet({
               total={viewActive ? viewTotal : initialRowCount}
               capped={viewActive && viewTotal > effectiveRowCount}
               loading={viewLoading}
+              filterOpen={filterOpen}
+              onFilterOpenChange={setFilterOpen}
             />
             <BulkToolbar grid={grid} />
           </>
@@ -288,6 +340,7 @@ export function SheetSpreadsheet({
         access={access}
         currentUserId={currentUserId}
       />
+      </SheetClipboardProvider>
     </SheetContactContext.Provider>
   );
 }

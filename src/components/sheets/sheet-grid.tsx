@@ -1,6 +1,7 @@
 "use client";
 
-import { memo, useEffect, useRef } from "react";
+import { memo, useMemo } from "react";
+import { useEffect, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Rows3Icon } from "lucide-react";
 import type { Json } from "@/types/database";
@@ -19,6 +20,7 @@ import {
   SmartsheetGridPinHead,
 } from "@/components/data/grid-pinned-columns";
 import { ROW_NUMBER_WIDTH } from "@/lib/sheets/column-widths";
+import { DEFAULT_ROW_HEIGHT } from "@/lib/sheets/row-heights";
 import type { ColumnLayout } from "@/lib/sheets/column-widths";
 import type { Row } from "@/types/domain";
 import { cn } from "@/lib/utils";
@@ -26,7 +28,7 @@ import { ColumnHeader } from "@/components/sheets/column-header";
 import { EditableCell, RowNumberCell } from "@/components/sheets/editable-cell";
 import type { SheetGridController } from "./use-sheet-grid";
 
-const ROW_HEIGHT = 32;
+const ROW_HEIGHT = DEFAULT_ROW_HEIGHT;
 
 export function SheetGrid({
   grid,
@@ -37,14 +39,32 @@ export function SheetGrid({
 }) {
   const gridRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { columnLayout, totalRowCount, selectedCell } = grid;
+  const { columnLayout, totalRowCount, selectedCell, showHiddenRows, showHiddenColumns } = grid;
+
+  const visibleRowIndexes = useMemo(() => {
+    const indexes: number[] = [];
+    for (let index = 0; index < totalRowCount; index += 1) {
+      const row = grid.getRowAt(index);
+      if (showHiddenRows || !row?.is_hidden) {
+        indexes.push(index);
+      }
+    }
+    return indexes;
+  }, [grid, showHiddenRows, totalRowCount, grid.rows]);
 
   const rowVirtualizer = useVirtualizer({
-    count: totalRowCount,
+    count: visibleRowIndexes.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => ROW_HEIGHT,
+    estimateSize: (index) => {
+      const rowIndex = visibleRowIndexes[index];
+      return rowIndex === undefined ? ROW_HEIGHT : grid.getRowHeight(rowIndex);
+    },
     overscan: 12,
   });
+
+  useEffect(() => {
+    rowVirtualizer.measure();
+  }, [grid.rowHeightEpoch, rowVirtualizer]);
 
   useEffect(() => {
     const virtualItems = rowVirtualizer.getVirtualItems();
@@ -52,20 +72,31 @@ export function SheetGrid({
       return;
     }
 
-    void grid.ensureRowsLoaded(virtualItems[0]!.index, virtualItems.at(-1)!.index);
-  }, [grid.ensureRowsLoaded, rowVirtualizer.range?.startIndex, rowVirtualizer.range?.endIndex, totalRowCount]);
+    const first = visibleRowIndexes[virtualItems[0]!.index];
+    const last = visibleRowIndexes[virtualItems.at(-1)!.index];
+    if (first === undefined || last === undefined) {
+      return;
+    }
+
+    void grid.ensureRowsLoaded(first, last);
+  }, [grid.ensureRowsLoaded, rowVirtualizer.range?.startIndex, rowVirtualizer.range?.endIndex, visibleRowIndexes]);
 
   useEffect(() => {
     if (!selectedCell || !gridRef.current) {
       return;
     }
 
-    rowVirtualizer.scrollToIndex(selectedCell.rowIndex, { align: "auto" });
+    const visibleIndex = visibleRowIndexes.indexOf(selectedCell.rowIndex);
+    if (visibleIndex < 0) {
+      return;
+    }
+
+    rowVirtualizer.scrollToIndex(visibleIndex, { align: "auto" });
 
     const selector = `[data-row-index="${selectedCell.rowIndex}"][data-col-index="${selectedCell.colIndex}"]`;
     const element = gridRef.current.querySelector<HTMLElement>(selector);
     element?.focus();
-  }, [rowVirtualizer, selectedCell]);
+  }, [rowVirtualizer, selectedCell, visibleRowIndexes]);
 
   if (columnLayout.length === 0) {
     return (
@@ -91,7 +122,13 @@ export function SheetGrid({
               >
                 #
               </SmartsheetGridPinHead>
-              {columnLayout.map((layout, columnIndex) => (
+              {columnLayout.map((layout, columnIndex) => {
+                const column = grid.columns[columnIndex];
+                if (!showHiddenColumns && column?.is_hidden) {
+                  return null;
+                }
+
+                return (
                 <ColumnHeadCell
                   key={layout.id}
                   layout={layout}
@@ -99,7 +136,8 @@ export function SheetGrid({
                   columnCount={columnLayout.length}
                   grid={grid}
                 />
-              ))}
+                );
+              })}
             </SmartsheetGridRow>
           </SmartsheetGridHeader>
           <SmartsheetGridBody>
@@ -122,13 +160,19 @@ export function SheetGrid({
                   />
                 )}
                 {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                  const row = grid.getRowAt(virtualRow.index);
+                  const rowIndex = visibleRowIndexes[virtualRow.index];
+                  if (rowIndex === undefined) {
+                    return null;
+                  }
+
+                  const row = grid.getRowAt(rowIndex);
                   if (!row) {
                     return (
                       <LoadingGridRow
-                        key={`loading-${virtualRow.index}`}
-                        rowIndex={virtualRow.index}
+                        key={`loading-${rowIndex}`}
+                        rowIndex={rowIndex}
                         columnLayout={columnLayout}
+                        grid={grid}
                       />
                     );
                   }
@@ -137,7 +181,7 @@ export function SheetGrid({
                     <SheetGridRowMemo
                       key={row.id}
                       row={row}
-                      rowIndex={virtualRow.index}
+                      rowIndex={rowIndex}
                       columnLayout={columnLayout}
                       grid={grid}
                       onOpenRow={onOpenRow}
@@ -166,22 +210,32 @@ export function SheetGrid({
 function LoadingGridRow({
   rowIndex,
   columnLayout,
+  grid,
 }: {
   rowIndex: number;
   columnLayout: ColumnLayout[];
+  grid: SheetGridController;
 }) {
+  const rowHeight = grid.getRowHeight(rowIndex);
+
   return (
-    <SmartsheetGridRow aria-busy="true">
+    <SmartsheetGridRow style={{ height: rowHeight, minHeight: rowHeight }} className="!h-auto" aria-busy="true">
       <SmartsheetGridPinCell
         pinLeft={0}
         className="p-0"
-        style={{ width: ROW_NUMBER_WIDTH, minWidth: ROW_NUMBER_WIDTH, height: ROW_HEIGHT }}
+        style={{ width: ROW_NUMBER_WIDTH, minWidth: ROW_NUMBER_WIDTH, height: rowHeight }}
       >
-        <div className="flex h-8 items-center justify-center text-xs text-muted-foreground">
+        <div className="flex items-center justify-center text-xs text-muted-foreground" style={{ height: rowHeight }}>
           {rowIndex + 1}
         </div>
       </SmartsheetGridPinCell>
-      {columnLayout.map((layout) => (
+      {columnLayout.map((layout, columnIndex) => {
+        const column = grid.columns[columnIndex];
+        if (!grid.showHiddenColumns && column?.is_hidden) {
+          return null;
+        }
+
+        return (
         <SmartsheetGridCell
           key={layout.id}
           className="p-0"
@@ -189,12 +243,13 @@ function LoadingGridRow({
             width: layout.widthPx,
             minWidth: layout.widthPx,
             maxWidth: layout.widthPx,
-            height: ROW_HEIGHT,
+            height: rowHeight,
           }}
         >
-          <div className="h-8 animate-pulse bg-muted/40" />
+          <div className="animate-pulse bg-muted/40" style={{ height: rowHeight }} />
         </SmartsheetGridCell>
-      ))}
+        );
+      })}
     </SmartsheetGridRow>
   );
 }
@@ -252,21 +307,27 @@ type SheetGridRowProps = {
 };
 
 function SheetGridRowComponent({ row, rowIndex, columnLayout, grid, onOpenRow }: SheetGridRowProps) {
+  const rowHeight = grid.getRowHeight(rowIndex);
   const rowData =
     row.data && typeof row.data === "object" && !Array.isArray(row.data)
       ? (row.data as Record<string, Json | undefined>)
       : {};
 
   return (
-    <SmartsheetGridRow>
+    <SmartsheetGridRow style={{ height: rowHeight, minHeight: rowHeight }} className="!h-auto">
       <SmartsheetGridPinCell
         pinLeft={0}
         className="p-0"
-        style={{ width: ROW_NUMBER_WIDTH, minWidth: ROW_NUMBER_WIDTH }}
+        style={{ width: ROW_NUMBER_WIDTH, minWidth: ROW_NUMBER_WIDTH, height: rowHeight }}
       >
         <RowNumberCell grid={grid} rowIndex={rowIndex} rowId={row.id} onOpenRow={onOpenRow} />
       </SmartsheetGridPinCell>
       {columnLayout.map((layout, colIndex) => {
+        const column = grid.columns[colIndex];
+        if (!grid.showHiddenColumns && column?.is_hidden) {
+          return null;
+        }
+
         const value = rowData[layout.key];
         const isSelected = grid.isCellSelected(rowIndex, colIndex);
         const isActive = grid.isCellActive(rowIndex, colIndex);
@@ -274,11 +335,13 @@ function SheetGridRowComponent({ row, rowIndex, columnLayout, grid, onOpenRow }:
           grid.editingCell?.rowIndex === rowIndex && grid.editingCell?.colIndex === colIndex;
         const isSaving =
           grid.savingCell?.rowId === row.id && grid.savingCell?.columnKey === layout.key;
+        const cellFormatting = grid.getCellStyle(rowIndex, colIndex);
 
         const cellStyle = {
           width: layout.widthPx,
           minWidth: layout.widthPx,
           maxWidth: layout.widthPx,
+          height: rowHeight,
         };
 
         const cell = (
@@ -293,6 +356,7 @@ function SheetGridRowComponent({ row, rowIndex, columnLayout, grid, onOpenRow }:
             isActive={isActive}
             isEditing={isEditing}
             isSaving={isSaving}
+            cellStyle={cellFormatting}
           />
         );
 
@@ -328,6 +392,12 @@ const SheetGridRowMemo = memo(SheetGridRowComponent, (prev, next) => {
     return false;
   }
   if (prev.rowIndex !== next.rowIndex) {
+    return false;
+  }
+  if (prev.row.height !== next.row.height) {
+    return false;
+  }
+  if (prev.grid.rowHeightEpoch !== next.grid.rowHeightEpoch) {
     return false;
   }
   if (prev.grid.selectionEpoch !== next.grid.selectionEpoch) {

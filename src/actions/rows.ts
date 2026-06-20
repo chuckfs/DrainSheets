@@ -10,7 +10,19 @@ import {
 } from "@/lib/activity/row-metadata";
 import { requireProfile } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
-import { createRowSchema, updateRowSchema, deleteRowSchema, reorderRowSchema, bulkDeleteRowsSchema, listRowsWindowSchema, getRowSchema } from "@/lib/validations/row";
+import { batchUpdateRowStylesSchema } from "@/lib/validations/cell-style";
+import {
+  bulkDeleteRowsSchema,
+  createRowSchema,
+  deleteRowSchema,
+  getRowSchema,
+  listRowsWindowSchema,
+  reorderRowSchema,
+  unhideAllRowsSchema,
+  updateRowHeightSchema,
+  updateRowHiddenSchema,
+  updateRowSchema,
+} from "@/lib/validations/row";
 import type { Json } from "@/types/database";
 import type { Row, RowData } from "@/types/domain";
 import { computeRowReorder } from "@/lib/sheets/row-position";
@@ -420,6 +432,8 @@ export async function duplicateRow(rowId: string): Promise<ActionResult<Row>> {
       org_id: profile.org_id,
       position: targetPosition,
       data: source.data,
+      height: source.height,
+      styles: source.styles,
       created_by: profile.id,
     })
     .select("*")
@@ -592,6 +606,131 @@ export async function batchUpdateRows(
       });
     }
 
+    revalidatePath(`/sheets/${sheetId}`);
+  }
+
+  return actionSuccess({ updated });
+}
+
+export async function updateRowHidden(
+  rowId: string,
+  isHidden: boolean,
+): Promise<ActionResult<Row>> {
+  await requireProfile();
+  const parsed = updateRowHiddenSchema.safeParse({ rowId, isHidden });
+
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "Invalid row");
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("rows")
+    .update({ is_hidden: parsed.data.isHidden })
+    .eq("id", parsed.data.rowId)
+    .select("*")
+    .single();
+
+  if (error) {
+    return actionError(error.message);
+  }
+
+  revalidatePath(`/sheets/${data.sheet_id}`);
+  return actionSuccess(data);
+}
+
+export async function unhideAllRows(sheetId: string): Promise<ActionResult<{ updated: number }>> {
+  await requireProfile();
+  const parsed = unhideAllRowsSchema.safeParse({ sheetId });
+
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "Invalid sheet");
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("rows")
+    .update({ is_hidden: false })
+    .eq("sheet_id", parsed.data.sheetId)
+    .eq("is_hidden", true)
+    .select("id");
+
+  if (error) {
+    return actionError(error.message);
+  }
+
+  revalidatePath(`/sheets/${parsed.data.sheetId}`);
+  return actionSuccess({ updated: data?.length ?? 0 });
+}
+
+export async function updateRowHeight(
+  rowId: string,
+  height: number | null,
+): Promise<ActionResult<Row>> {
+  await requireProfile();
+  const parsed = updateRowHeightSchema.safeParse({ rowId, height });
+
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "Invalid row height");
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("rows")
+    .update({ height: parsed.data.height })
+    .eq("id", parsed.data.rowId)
+    .select("*")
+    .single();
+
+  if (error) {
+    return actionError(error.message);
+  }
+
+  revalidatePath(`/sheets/${data.sheet_id}`);
+  return actionSuccess(data);
+}
+
+export async function batchUpdateRowStyles(
+  updates: Array<{ rowId: string; styles: Record<string, Json> }>,
+  options?: { sheetId?: string },
+): Promise<ActionResult<{ updated: number }>> {
+  await requireProfile();
+  const parsed = batchUpdateRowStylesSchema.safeParse({ updates });
+
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "Invalid row styles");
+  }
+
+  const supabase = await createClient();
+  let updated = 0;
+  let sheetId = options?.sheetId;
+
+  for (const entry of parsed.data.updates) {
+    const { data: existing, error: fetchError } = await supabase
+      .from("rows")
+      .select("sheet_id")
+      .eq("id", entry.rowId)
+      .single();
+
+    if (fetchError) {
+      return actionError(fetchError.message);
+    }
+
+    sheetId = sheetId ?? existing.sheet_id;
+
+    const { error } = await supabase
+      .from("rows")
+      .update({ styles: entry.styles as Json })
+      .eq("id", entry.rowId);
+
+    if (error) {
+      return actionError(error.message);
+    }
+
+    updated += 1;
+  }
+
+  if (sheetId) {
     revalidatePath(`/sheets/${sheetId}`);
   }
 

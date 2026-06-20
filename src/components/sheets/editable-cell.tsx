@@ -7,6 +7,7 @@ import { getCellRenderer } from "@/components/sheets/cell-renderers/cell-rendere
 import type { Json } from "@/types/database";
 import type { SheetColumn } from "@/types/domain";
 import { cn } from "@/lib/utils";
+import { rangeSpansMultipleCells } from "@/lib/sheets/selection";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -16,6 +17,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { CellCoord, SheetGridController } from "./use-sheet-grid";
 import type { NavigateDirection } from "./cell-renderers/types";
+import { cellStyleClassName, cellStyleInline, type CellStyle } from "@/lib/sheets/cell-style";
+import { FillHandle } from "./fill-handle";
+import { GridContextMenu } from "./grid-context-menu";
+import { RowResizeHandle } from "./row-resize-handle";
+import { useSheetClipboardActions } from "./sheet-clipboard-context";
 
 type EditableCellProps = {
   grid: SheetGridController;
@@ -28,6 +34,7 @@ type EditableCellProps = {
   isActive: boolean;
   isEditing: boolean;
   isSaving: boolean;
+  cellStyle: CellStyle;
 };
 
 function EditableCellComponent({
@@ -40,7 +47,9 @@ function EditableCellComponent({
   isActive,
   isEditing,
   isSaving,
+  cellStyle,
 }: EditableCellProps) {
+  const clipboard = useSheetClipboardActions();
   const coord: CellCoord = { rowIndex, colIndex };
   const Renderer = getCellRenderer(column.type);
   const mode = isEditing || column.type === "checkbox" ? "edit" : "display";
@@ -102,55 +111,94 @@ function EditableCellComponent({
     }
   }
 
-  return (
-    <div
-      role="gridcell"
-      tabIndex={isActive ? 0 : -1}
-      data-row-index={rowIndex}
-      data-col-index={colIndex}
-      className={cn(
-        "relative h-full min-h-7 px-2 py-1 outline-none",
-        isSelected && "bg-primary/8",
-        isActive && "z-10 ring-2 ring-inset ring-primary",
-        isSaving && "bg-muted/40",
-      )}
-      onPointerDown={(event) => {
-        if (event.button !== 0) {
-          return;
-        }
-        grid.beginSelection(coord, event.shiftKey);
-      }}
-      onPointerEnter={() => grid.updateDragSelection(coord)}
-      onClick={() => {
-        if (grid.readOnly) {
-          return;
-        }
+  const showFillHandle =
+    isActive &&
+    !isEditing &&
+    !grid.readOnly &&
+    !rangeSpansMultipleCells(grid.selectionRange);
 
-        if (column.type !== "checkbox" && column.type !== "contact") {
-          grid.startEditing(coord);
-        }
-      }}
-      onDoubleClick={() => {
-        if (!grid.readOnly) {
-          grid.startEditing(coord);
-        }
-      }}
-      onKeyDown={handleContainerKeyDown}
+  return (
+    <GridContextMenu
+      items={[
+        {
+          id: "copy",
+          label: "Copy",
+          onSelect: () => void clipboard.copySelection(),
+          disabled: !grid.selectionRange,
+        },
+        {
+          id: "paste",
+          label: "Paste",
+          onSelect: () => void clipboard.pasteFromClipboard(),
+          disabled: grid.readOnly || !grid.selectedCell,
+        },
+        {
+          id: "clear",
+          label: "Clear contents",
+          onSelect: () => void grid.clearSelectionValues(),
+          disabled: grid.readOnly || !grid.selectionRange,
+          separatorBefore: true,
+        },
+        {
+          id: "fill",
+          label: "Fill down",
+          onSelect: () => void grid.fillDown(),
+          disabled: grid.readOnly || !grid.selectedCell,
+        },
+      ]}
     >
-      <Renderer
-        column={column}
-        value={value}
-        mode={mode}
-        isSaving={isSaving}
-        autoFocus={isEditing}
-        onCommit={handleCommit}
-        onCancel={() => grid.stopEditing()}
-        onNavigate={handleNavigate}
-      />
-      {isSaving && (
-        <span className="pointer-events-none absolute top-1 right-1 size-2 animate-pulse rounded-full bg-primary" />
-      )}
-    </div>
+      <div
+        role="gridcell"
+        tabIndex={isActive ? 0 : -1}
+        data-row-index={rowIndex}
+        data-col-index={colIndex}
+        className={cn(
+          "relative h-full min-h-7 px-2 py-1 outline-none",
+          cellStyleClassName(cellStyle),
+          isSelected && "bg-primary/8",
+          isActive && "z-10 ring-2 ring-inset ring-primary",
+          isSaving && "bg-muted/40",
+        )}
+        style={cellStyleInline(cellStyle)}
+        onPointerDown={(event) => {
+          if (event.button !== 0) {
+            return;
+          }
+          grid.beginSelection(coord, event.shiftKey);
+        }}
+        onPointerEnter={() => grid.updateDragSelection(coord)}
+        onClick={() => {
+          if (grid.readOnly) {
+            return;
+          }
+
+          if (column.type !== "checkbox" && column.type !== "contact") {
+            grid.startEditing(coord);
+          }
+        }}
+        onDoubleClick={() => {
+          if (!grid.readOnly) {
+            grid.startEditing(coord);
+          }
+        }}
+        onKeyDown={handleContainerKeyDown}
+      >
+        <Renderer
+          column={column}
+          value={value}
+          mode={mode}
+          isSaving={isSaving}
+          autoFocus={isEditing}
+          onCommit={handleCommit}
+          onCancel={() => grid.stopEditing()}
+          onNavigate={handleNavigate}
+        />
+        {isSaving && (
+          <span className="pointer-events-none absolute top-1 right-1 size-2 animate-pulse rounded-full bg-primary" />
+        )}
+        {showFillHandle ? <FillHandle grid={grid} coord={coord} /> : null}
+      </div>
+    </GridContextMenu>
   );
 }
 
@@ -164,7 +212,8 @@ export const EditableCell = memo(EditableCellComponent, (prev, next) => {
     prev.isEditing === next.isEditing &&
     prev.isSaving === next.isSaving &&
     prev.rowIndex === next.rowIndex &&
-    prev.colIndex === next.colIndex
+    prev.colIndex === next.colIndex &&
+    JSON.stringify(prev.cellStyle) === JSON.stringify(next.cellStyle)
   );
 });
 
@@ -186,37 +235,86 @@ export function RowNumberCell({
     rowIndex <= grid.normalizedSelection.maxRow;
 
   const isReadOnly = grid.readOnly;
+  const rowHeight = grid.getRowHeight(rowIndex);
 
   return (
-    <div
-      className={cn(
-        "flex h-full min-h-7 items-center justify-between gap-0.5 px-1 tabular-nums text-muted-foreground",
-        isRowSelected && "bg-primary/8",
-        dragOver && "bg-primary/15",
-      )}
-      draggable={!isReadOnly && !rowId.startsWith("temp-")}
-      onDragStart={(event) => {
-        event.dataTransfer.setData("text/plain", rowId);
-        event.dataTransfer.effectAllowed = "move";
-      }}
-      onDragOver={(event) => {
-        event.preventDefault();
-        setDragOver(true);
-      }}
-      onDragLeave={() => setDragOver(false)}
-      onDrop={(event) => {
-        if (isReadOnly) {
-          return;
-        }
-
-        event.preventDefault();
-        setDragOver(false);
-        const sourceId = event.dataTransfer.getData("text/plain");
-        if (sourceId && sourceId !== rowId) {
-          void grid.moveRowToIndex(sourceId, rowIndex);
-        }
-      }}
+    <GridContextMenu
+      items={[
+        ...(onOpenRow
+          ? [{ id: "open", label: "Open row", onSelect: () => onOpenRow(rowId) }]
+          : []),
+        {
+          id: "insert-above",
+          label: "Insert row above",
+          onSelect: () => void grid.insertRowAt(rowIndex),
+          disabled: isReadOnly,
+          separatorBefore: Boolean(onOpenRow),
+        },
+        {
+          id: "insert-below",
+          label: "Insert row below",
+          onSelect: () => void grid.insertRowAt(rowIndex + 1),
+          disabled: isReadOnly,
+        },
+        {
+          id: "duplicate",
+          label: "Duplicate row",
+          onSelect: () => void grid.duplicateRowById(rowId),
+          disabled: isReadOnly,
+          separatorBefore: true,
+        },
+        {
+          id: "hide",
+          label: "Hide row",
+          onSelect: () => void grid.hideRowById(rowId),
+          disabled: isReadOnly,
+        },
+        {
+          id: "unhide-all",
+          label: "Unhide all rows",
+          onSelect: () => void grid.unhideAllRows(),
+          disabled: isReadOnly,
+        },
+        {
+          id: "delete",
+          label: "Delete row",
+          onSelect: () => void grid.deleteRowById(rowId),
+          disabled: isReadOnly,
+          destructive: true,
+          separatorBefore: true,
+        },
+      ]}
     >
+      <div
+        className={cn(
+          "relative flex h-full min-h-7 items-center justify-between gap-0.5 px-1 tabular-nums text-muted-foreground",
+          isRowSelected && "bg-primary/8",
+          dragOver && "bg-primary/15",
+        )}
+        style={{ height: rowHeight }}
+        draggable={!isReadOnly && !rowId.startsWith("temp-")}
+        onDragStart={(event) => {
+          event.dataTransfer.setData("text/plain", rowId);
+          event.dataTransfer.effectAllowed = "move";
+        }}
+        onDragOver={(event) => {
+          event.preventDefault();
+          setDragOver(true);
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(event) => {
+          if (isReadOnly) {
+            return;
+          }
+
+          event.preventDefault();
+          setDragOver(false);
+          const sourceId = event.dataTransfer.getData("text/plain");
+          if (sourceId && sourceId !== rowId) {
+            void grid.moveRowToIndex(sourceId, rowIndex);
+          }
+        }}
+      >
       <GripVerticalIcon
         className={cn("size-3 shrink-0 opacity-40", !isReadOnly && "cursor-grab")}
         aria-hidden
@@ -254,6 +352,18 @@ export function RowNumberCell({
           )}
         </DropdownMenuContent>
       </DropdownMenu>
-    </div>
+      {!isReadOnly && !rowId.startsWith("temp-") ? (
+        <RowResizeHandle
+          onResize={(deltaY) => {
+            const current = grid.getRowHeight(rowIndex);
+            grid.resizeRowHeight(rowId, current + deltaY);
+          }}
+          onResizeEnd={() => {
+            void grid.persistRowHeight(rowId, grid.getRowHeight(rowIndex));
+          }}
+        />
+      ) : null}
+      </div>
+    </GridContextMenu>
   );
 }

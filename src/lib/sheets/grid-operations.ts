@@ -137,6 +137,31 @@ export function buildFillDownUpdates(input: {
   return updates;
 }
 
+/** Copy a single source cell's value down through targetEndRow (inclusive). */
+export function buildFillFromCellUpdates(input: {
+  sourceRow: number;
+  sourceCol: number;
+  targetEndRow: number;
+  getValue: (rowIndex: number, colIndex: number) => Json | undefined;
+}): CellUpdate[] {
+  if (input.targetEndRow <= input.sourceRow) {
+    return [];
+  }
+
+  const sourceValue = input.getValue(input.sourceRow, input.sourceCol);
+  const updates: CellUpdate[] = [];
+
+  for (let rowIndex = input.sourceRow + 1; rowIndex <= input.targetEndRow; rowIndex += 1) {
+    updates.push({
+      rowIndex,
+      colIndex: input.sourceCol,
+      value: sourceValue,
+    });
+  }
+
+  return updates;
+}
+
 export function mergeBatchServerUpdates(
   updates: CellUpdate[],
   rows: Array<{ id: string } | undefined>,

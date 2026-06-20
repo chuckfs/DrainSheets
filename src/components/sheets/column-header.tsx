@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { ColumnResizeHandle } from "./column-resize-handle";
 import { SelectOptionsEditor } from "./select-options-editor";
 import { DeleteColumnDialog } from "./delete-column-dialog";
+import { GridContextMenu } from "./grid-context-menu";
 import type { SheetGridController } from "./use-sheet-grid";
 
 export function ColumnHeader({
@@ -60,6 +61,49 @@ export function ColumnHeader({
 
   return (
     <>
+      <GridContextMenu
+        items={[
+          {
+            id: "rename",
+            label: "Rename column",
+            onSelect: () => setIsEditing(true),
+            disabled: isReadOnly,
+          },
+          {
+            id: "pin",
+            label: column.is_pinned ? "Unpin column" : "Pin column",
+            onSelect: () => void grid.toggleColumnPinned(column.id, !column.is_pinned),
+            disabled: isReadOnly,
+          },
+          {
+            id: "hide",
+            label: "Hide column",
+            onSelect: () => void grid.hideColumnById(column.id),
+            disabled: isReadOnly,
+            separatorBefore: true,
+          },
+          {
+            id: "unhide-all",
+            label: "Unhide all columns",
+            onSelect: () => void grid.unhideAllColumns(),
+            disabled: isReadOnly,
+          },
+          {
+            id: "add",
+            label: "Insert column",
+            onSelect: () => void grid.addColumn("Column", "text"),
+            disabled: isReadOnly,
+            separatorBefore: true,
+          },
+          {
+            id: "delete",
+            label: "Delete column",
+            onSelect: () => setDeleteOpen(true),
+            disabled: isReadOnly,
+            destructive: true,
+          },
+        ]}
+      >
       <div className="group relative flex min-w-0 items-center gap-1 pr-2">
         {isEditing ? (
           <Input
@@ -175,6 +219,7 @@ export function ColumnHeader({
         />
         )}
       </div>
+      </GridContextMenu>
 
       {column.type === "select" && !isReadOnly && (
         <SelectOptionsEditor
