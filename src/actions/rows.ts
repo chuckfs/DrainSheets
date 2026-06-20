@@ -20,8 +20,12 @@ function toRowJson(data: RowData): Json {
   return data as Json;
 }
 
-/** Hard cap on how many rows a filtered/sorted view loads into the client at once. */
-export const ROW_VIEW_CAP = 2000;
+/**
+ * Hard cap on how many rows a filtered/sorted view loads into the client at once.
+ * Normal scrolling/browsing is windowed (listRowsWindow) and has no cap; this only
+ * bounds a single sort/filter "view" so it stays responsive and memory-safe.
+ */
+export const ROW_VIEW_CAP = 5000;
 
 async function getColumnKeySet(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -199,22 +203,9 @@ export async function getRow(rowId: string): Promise<Row | null> {
   return data;
 }
 
-export async function listRows(sheetId: string): Promise<Row[]> {
-  await requireProfile();
-  const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from("rows")
-    .select("*")
-    .eq("sheet_id", sheetId)
-    .order("position", { ascending: true });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return data ?? [];
-}
+// NOTE: there is intentionally no "load every row" action. The grid loads rows
+// in windows (listRowsWindow) so large sheets never fetch the whole dataset.
+// Filtered/sorted views use listSheetRowsView, which is capped at ROW_VIEW_CAP.
 
 async function nextRowPosition(sheetId: string): Promise<number> {
   const supabase = await createClient();
