@@ -9,8 +9,15 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ListPageShell } from "@/components/layout/list-page-shell";
 import { SheetHeader } from "@/components/layout/sheet-header";
 import { CreateWorkspaceGate } from "@/components/workspaces/create-workspace-gate";
+import { parseHomeTab } from "@/lib/navigation";
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const { tab: tabParam } = await searchParams;
+  const tab = parseHomeTab(tabParam);
   const profile = await requireProfile();
   const [workspaces, recents, favorites, activity] = await Promise.all([
     listWorkspaces(),
@@ -49,6 +56,7 @@ export default async function HomePage() {
 
   return (
     <HomeDashboard
+      tab={tab}
       workspaces={workspaces.map((workspace) => ({ id: workspace.id, name: workspace.name }))}
       recents={recents}
       favorites={favorites}

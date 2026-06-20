@@ -2,7 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { SignOutButton } from "@/components/auth/sign-out-button";
-import { SearchCommand } from "@/components/search/search-command";
+import { HeaderSearchCommand } from "@/components/layout/search-command-provider";
 import { MobileNavSheet } from "@/components/layout/mobile-nav-sheet";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import type { Profile } from "@/types/domain";
@@ -10,15 +10,20 @@ import type { Profile } from "@/types/domain";
 export function SiteHeader({
   profile,
   workspaces = [],
+  canCreateWorkspace = false,
 }: {
   profile: Profile;
   workspaces?: Array<{ id: string; name: string }>;
+  canCreateWorkspace?: boolean;
 }) {
   return (
     <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-background px-3">
-      <MobileNavSheet workspaces={workspaces} />
+      <MobileNavSheet
+        workspaces={workspaces}
+        canCreateWorkspace={canCreateWorkspace}
+      />
       <div className="min-w-0 flex-1 px-1">
-        <SearchCommand />
+        <HeaderSearchCommand />
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <div className="hidden items-center gap-2 rounded-full border bg-card py-0.5 pl-0.5 pr-2.5 sm:flex">

@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 
 type SheetHeaderProps = {
   eyebrow?: string;
-  title: string;
+  title: ReactNode;
   subtitle?: string;
   meta?: ReactNode;
   actions?: ReactNode;

@@ -2,11 +2,18 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Settings } from "lucide-react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { workspacePaletteIndex } from "@/lib/workspaces/avatar";
-import { WorkspaceAvatar } from "@/components/workspaces/workspace-avatar";
+import {
+  isRailItemActive,
+  parseHomeTab,
+  railFooterItems,
+  railNavItems,
+  type RailNavItem,
+} from "@/lib/navigation";
+import { useSearchCommand } from "@/components/layout/search-command-provider";
+import { RailCreateMenu } from "@/components/layout/rail-create-menu";
 import {
   Tooltip,
   TooltipContent,
@@ -29,26 +36,61 @@ const ACCENT_OVERRIDES: Record<string, (i: number) => string> = {
   "--row-selected": (i) => `var(--ws-${i}-bg)`,
 };
 
+function RailNavButton({
+  item,
+  active,
+  onClick,
+}: {
+  item: RailNavItem;
+  active: boolean;
+  onClick?: () => void;
+}) {
+  const Icon = item.icon;
+  const content = (
+    <>
+      <Icon className="size-[18px] shrink-0" aria-hidden />
+      <span className="text-[10px] font-medium leading-none">{item.label}</span>
+    </>
+  );
+
+  const className = cn(
+    "relative flex w-full flex-col items-center gap-1 rounded-lg px-1 py-2 transition-colors",
+    active
+      ? "bg-rail-accent text-primary"
+      : "text-rail-foreground/70 hover:bg-rail-accent hover:text-rail-foreground",
+  );
+
+  if (onClick) {
+    return (
+      <button type="button" className={className} onClick={onClick} aria-current={active ? "page" : undefined}>
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <Link href={item.href!} className={className} aria-current={active ? "page" : undefined}>
+      {active ? (
+        <span className="absolute inset-y-1 -left-0.5 w-[2.5px] rounded-r-full bg-rail-indicator" />
+      ) : null}
+      {content}
+    </Link>
+  );
+}
+
 function IconRail({
   workspaces,
   activeWorkspaceId,
+  canCreateWorkspace,
 }: {
   workspaces: RailWorkspace[];
   activeWorkspaceId: string | null;
+  canCreateWorkspace: boolean;
 }) {
   const pathname = usePathname();
-  const onHome = pathname === "/";
-  const activeWorkspace = useMemo(
-    () => workspaces.find((workspace) => workspace.id === activeWorkspaceId) ?? null,
-    [activeWorkspaceId, workspaces],
-  );
-  const railWorkspaces = useMemo(
-    () =>
-      activeWorkspace
-        ? workspaces.filter((workspace) => workspace.id !== activeWorkspace.id)
-        : workspaces,
-    [activeWorkspace, workspaces],
-  );
+  const searchParams = useSearchParams();
+  const homeTab = pathname === "/" ? parseHomeTab(searchParams.get("tab") ?? undefined) : null;
+  const { openSearch } = useSearchCommand();
 
   useEffect(() => {
     const root = document.documentElement;
@@ -68,95 +110,74 @@ function IconRail({
     };
   }, [activeWorkspaceId]);
 
+  const navItems = useMemo(
+    () =>
+      railNavItems.map((item) => ({
+        item,
+        active: isRailItemActive(pathname, homeTab, item),
+      })),
+    [homeTab, pathname],
+  );
+
   return (
     <aside
-      className="hidden w-[52px] shrink-0 flex-col border-r border-rail-border bg-rail md:flex"
+      className="hidden w-[72px] shrink-0 flex-col border-r border-rail-border bg-rail md:flex"
       aria-label="Main navigation"
     >
       <div className="flex h-12 items-center justify-center border-b border-rail-border">
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Link
-                href="/"
-                className={cn(
-                  "flex size-8 items-center justify-center rounded-lg transition-transform hover:scale-105",
-                  onHome && !activeWorkspace
-                    ? "bg-primary text-primary-foreground"
-                    : "hover:opacity-90",
-                )}
-                aria-current={onHome ? "page" : undefined}
-              >
-                {activeWorkspace ? (
-                  <WorkspaceAvatar
-                    id={activeWorkspace.id}
-                    name={activeWorkspace.name}
-                    className="size-8"
-                    active={!onHome}
-                  />
-                ) : (
-                  <span className="text-[13px] font-semibold tracking-tight">DS</span>
-                )}
-                <span className="sr-only">{activeWorkspace ? "Home" : "DrainSheets home"}</span>
-              </Link>
-            }
-          />
-          <TooltipContent side="right">
-            {activeWorkspace ? "Home" : "DrainSheets home"}
-          </TooltipContent>
-        </Tooltip>
+        <Link
+          href="/"
+          className="flex size-9 items-center justify-center rounded-lg bg-primary text-[13px] font-semibold tracking-tight text-primary-foreground transition-transform hover:scale-105"
+          aria-label="DrainSheets home"
+        >
+          DS
+        </Link>
       </div>
 
-      <nav className="flex flex-1 flex-col items-center gap-1.5 overflow-y-auto py-3">
-        {railWorkspaces.map((workspace) => {
-          const active = workspace.id === activeWorkspaceId;
+      <nav className="flex flex-1 flex-col items-stretch gap-0.5 overflow-y-auto px-1 py-2">
+        {navItems.map(({ item, active }) => {
+          if (item.action === "search") {
+            return (
+              <Tooltip key={item.id}>
+                <TooltipTrigger
+                  render={
+                    <div>
+                      <RailNavButton item={item} active={false} onClick={openSearch} />
+                    </div>
+                  }
+                />
+                <TooltipContent side="right">Search (⌘K)</TooltipContent>
+              </Tooltip>
+            );
+          }
+
+          if (item.action === "create") {
+            return (
+              <div key={item.id} className="pt-1">
+                <RailCreateMenu workspaces={workspaces} canCreateWorkspace={canCreateWorkspace} />
+              </div>
+            );
+          }
+
           return (
-            <Tooltip key={workspace.id}>
-              <TooltipTrigger
-                render={
-                  <Link
-                    href={`/workspaces/${workspace.id}`}
-                    className="relative flex items-center justify-center rounded-lg transition-transform hover:scale-105"
-                    aria-current={active ? "page" : undefined}
-                  >
-                    {active && (
-                      <span className="absolute inset-y-1 -left-2 w-[2.5px] rounded-r-full bg-rail-indicator" />
-                    )}
-                    <WorkspaceAvatar
-                      id={workspace.id}
-                      name={workspace.name}
-                      active={active}
-                      className="size-9"
-                    />
-                    <span className="sr-only">{workspace.name}</span>
-                  </Link>
-                }
-              />
-              <TooltipContent side="right">{workspace.name}</TooltipContent>
+            <Tooltip key={item.id}>
+              <TooltipTrigger render={<div><RailNavButton item={item} active={active} /></div>} />
+              <TooltipContent side="right">{item.label}</TooltipContent>
             </Tooltip>
           );
         })}
       </nav>
 
-      <div className="flex flex-col items-center gap-1 border-t border-rail-border py-3">
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Link
-                href="/settings"
-                className={cn(
-                  "flex size-10 items-center justify-center rounded-lg text-rail-foreground/60 transition-colors duration-150 hover:bg-rail-accent hover:text-rail-foreground",
-                  pathname.startsWith("/settings") && "bg-rail-accent text-primary",
-                )}
-                aria-current={pathname.startsWith("/settings") ? "page" : undefined}
-              >
-                <Settings className="size-[18px]" aria-hidden />
-                <span className="sr-only">Settings</span>
-              </Link>
-            }
-          />
-          <TooltipContent side="right">Settings</TooltipContent>
-        </Tooltip>
+      <div className="border-t border-rail-border px-1 py-2">
+        {railFooterItems.map((item) => {
+          const active = isRailItemActive(pathname, homeTab, item);
+          return (
+            <Tooltip key={item.id}>
+              <TooltipTrigger render={<div><RailNavButton item={item} active={active} /></div>} />
+              <TooltipContent side="right">{item.label}</TooltipContent>
+            </Tooltip>
+          );
+        })}
       </div>
     </aside>
   );
@@ -164,9 +185,11 @@ function IconRail({
 
 export function WorkspaceRailShell({
   workspaces,
+  canCreateWorkspace,
   children,
 }: {
   workspaces: RailWorkspace[];
+  canCreateWorkspace: boolean;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -183,7 +206,11 @@ export function WorkspaceRailShell({
   return (
     <WorkspaceRailContext.Provider value={{ setSheetWorkspaceId }}>
       <div className="flex min-h-screen">
-        <IconRail workspaces={workspaces} activeWorkspaceId={activeWorkspaceId} />
+        <IconRail
+          workspaces={workspaces}
+          activeWorkspaceId={activeWorkspaceId}
+          canCreateWorkspace={canCreateWorkspace}
+        />
         {children}
       </div>
     </WorkspaceRailContext.Provider>

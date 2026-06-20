@@ -1,5 +1,5 @@
-import { DeferredPage } from "@/components/layout/deferred-page";
+import { redirect } from "next/navigation";
 
 export default function SearchPage() {
-  return <DeferredPage title="Search" />;
+  redirect("/");
 }

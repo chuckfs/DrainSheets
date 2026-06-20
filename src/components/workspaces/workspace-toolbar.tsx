@@ -13,6 +13,7 @@ import { CreateFolderDialog } from "@/components/workspaces/create-folder-dialog
 import { CreateSheetDialog } from "@/components/sheets/create-sheet-dialog";
 import { CreateWorkspaceDialog } from "@/components/workspaces/create-workspace-dialog";
 import { ImportDialog } from "@/components/import/import-dialog";
+import { WorkspaceAvatar } from "@/components/workspaces/workspace-avatar";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 
 export function WorkspaceToolbar({
@@ -38,8 +39,14 @@ export function WorkspaceToolbar({
   return (
     <>
       <SheetHeader
+        className="border-t-4 border-t-primary"
         eyebrow="Workspace"
-        title={workspace.name}
+        title={
+          <span className="flex items-center gap-2">
+            <WorkspaceAvatar id={workspace.id} name={workspace.name} className="size-8 text-[11px]" />
+            {workspace.name}
+          </span>
+        }
         meta={
           <div className="flex flex-wrap items-center gap-2">
             {workspaceSwitcher}
