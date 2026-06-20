@@ -53,7 +53,7 @@ export function SmartsheetGridRow({
   return (
     <TableRow
       className={cn(
-        "h-8 min-h-8 border-grid-line hover:bg-row-hover even:bg-muted/15 data-[state=selected]:bg-row-selected",
+        "h-8 min-h-8 border-grid-line transition-colors hover:bg-row-hover data-[state=selected]:bg-row-selected",
         className,
       )}
       {...props}

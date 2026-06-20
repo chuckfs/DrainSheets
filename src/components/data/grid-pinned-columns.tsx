@@ -27,8 +27,8 @@ export function SmartsheetGridPinCell({
   return (
     <TableCell
       className={cn(
-        "sticky z-[5] border-r border-grid-line bg-background px-2 py-1 align-middle text-[13px] even:bg-muted/15",
-        selected && "bg-row-selected even:bg-row-selected",
+        "sticky z-[5] border-r border-grid-line bg-background px-2 py-1 align-middle text-[13px]",
+        selected && "bg-row-selected",
         className,
       )}
       style={{ left: pinLeft }}

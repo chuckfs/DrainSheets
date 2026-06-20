@@ -42,7 +42,7 @@ export function ColumnResizeHandle({
     <div
       role="separator"
       aria-orientation="vertical"
-      className="absolute top-0 right-0 z-20 h-full w-1.5 cursor-col-resize touch-none hover:bg-primary/30"
+      className="absolute top-0 right-0 z-20 h-full w-1.5 cursor-col-resize touch-none after:absolute after:inset-y-0 after:right-0 after:w-[2px] after:bg-primary after:opacity-0 after:transition-opacity hover:after:opacity-100"
       onPointerDown={handlePointerDown}
     />
   );

@@ -111,7 +111,7 @@ function EditableCellComponent({
       className={cn(
         "relative h-full min-h-7 px-2 py-1 outline-none",
         isSelected && "bg-primary/8",
-        isActive && "ring-2 ring-inset ring-primary/50",
+        isActive && "z-10 ring-2 ring-inset ring-primary",
         isSaving && "bg-muted/40",
       )}
       onPointerDown={(event) => {

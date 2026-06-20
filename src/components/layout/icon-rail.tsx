@@ -21,13 +21,13 @@ export function IconRail() {
       <div className="flex h-12 items-center justify-center border-b border-rail-border">
         <Link
           href="/"
-          className="flex size-8 items-center justify-center rounded-md text-sm font-bold text-rail-foreground"
+          className="flex size-8 items-center justify-center rounded-lg bg-primary text-[13px] font-semibold tracking-tight text-primary-foreground transition-transform hover:scale-105"
           title="DrainSheets"
         >
           DS
         </Link>
       </div>
-      <nav className="flex flex-1 flex-col items-center gap-0.5 py-2">
+      <nav className="flex flex-1 flex-col items-center gap-1 py-3">
         {mainNavItems.map((item) => {
           const active = isNavActive(pathname, item);
           const Icon = item.icon;
@@ -38,14 +38,14 @@ export function IconRail() {
                   <Link
                     href={item.href}
                     className={cn(
-                      "relative flex size-10 items-center justify-center rounded-md text-rail-foreground/70 transition-colors",
+                      "relative flex size-10 items-center justify-center rounded-lg text-rail-foreground/60 transition-colors duration-150",
                       "hover:bg-rail-accent hover:text-rail-foreground",
-                      active && "bg-rail-accent text-rail-foreground",
+                      active && "bg-rail-accent text-primary",
                     )}
                     aria-current={active ? "page" : undefined}
                   >
                     {active && (
-                      <span className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-rail-indicator" />
+                      <span className="absolute inset-y-2 left-0 w-[2.5px] rounded-r-full bg-rail-indicator" />
                     )}
                     <Icon className="size-[18px]" aria-hidden />
                     <span className="sr-only">{item.label}</span>
