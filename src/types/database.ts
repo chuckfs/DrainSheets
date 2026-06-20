@@ -185,6 +185,7 @@ export type Database = {
       documents: {
         Row: {
           created_at: string
+          current_version: number
           description: string | null
           file_name: string
           file_path: string
@@ -196,9 +197,11 @@ export type Database = {
           search_vector: unknown
           sheet_id: string
           uploaded_by: string | null
+          version_count: number
         }
         Insert: {
           created_at?: string
+          current_version?: number
           description?: string | null
           file_name: string
           file_path: string
@@ -210,9 +213,11 @@ export type Database = {
           search_vector?: unknown
           sheet_id: string
           uploaded_by?: string | null
+          version_count?: number
         }
         Update: {
           created_at?: string
+          current_version?: number
           description?: string | null
           file_name?: string
           file_path?: string
@@ -224,6 +229,7 @@ export type Database = {
           search_vector?: unknown
           sheet_id?: string
           uploaded_by?: string | null
+          version_count?: number
         }
         Relationships: [
           {
@@ -249,6 +255,67 @@ export type Database = {
           },
           {
             foreignKeyName: "documents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_versions: {
+        Row: {
+          created_at: string
+          document_id: string
+          file_name: string
+          file_path: string
+          file_size: number | null
+          id: string
+          mime_type: string | null
+          org_id: string
+          uploaded_by: string | null
+          version_no: number
+        }
+        Insert: {
+          created_at?: string
+          document_id: string
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          org_id: string
+          uploaded_by?: string | null
+          version_no: number
+        }
+        Update: {
+          created_at?: string
+          document_id?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          org_id?: string
+          uploaded_by?: string | null
+          version_no?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_versions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_versions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_versions_uploaded_by_fkey"
             columns: ["uploaded_by"]
             isOneToOne: false
             referencedRelation: "profiles"

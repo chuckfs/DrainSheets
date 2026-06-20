@@ -15,6 +15,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DocumentPreviewDialog } from "./document-preview-dialog";
+import { DocumentVersionsDialog } from "./document-versions-dialog";
 
 function formatFileSize(bytes: number | null): string {
   if (!bytes) {
@@ -41,6 +42,7 @@ export function DocumentList({
   onChange: () => void;
 }) {
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const [versionsDoc, setVersionsDoc] = useState<DocumentWithUploader | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
@@ -121,6 +123,16 @@ export function DocumentList({
                   )}
                 </div>
                 <div className="flex shrink-0 gap-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setVersionsDoc(document)}
+                  >
+                    {document.version_count > 1
+                      ? `Versions (${document.version_count})`
+                      : "Versions"}
+                  </Button>
                   {canRename(document) && (
                     <Button
                       type="button"
@@ -159,6 +171,22 @@ export function DocumentList({
           }
         }}
       />
+      {versionsDoc && (
+        <DocumentVersionsDialog
+          documentId={versionsDoc.id}
+          documentName={versionsDoc.file_name}
+          currentVersion={versionsDoc.current_version}
+          canEdit={access.canEdit}
+          canManage={canDelete(versionsDoc)}
+          open={Boolean(versionsDoc)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setVersionsDoc(null);
+            }
+          }}
+          onChanged={onChange}
+        />
+      )}
     </>
   );
 }

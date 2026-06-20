@@ -49,7 +49,7 @@ _Last updated: June 19, 2026_
 
 ## Nice to have later (minor / not in the broker's core flow)
 
-- [ ] 🟡 **Document version history** (the "Version 1" dropdown in the video)
+- [x] ✅ **Document version history** (the "Version 1" dropdown in the video) — DONE (Jun 20). Every attachment now has a **"Versions" button**. Re-uploading keeps the old files instead of overwriting: you get a history list (newest first) with **download, restore-as-current, and delete** for each version, plus an "upload new version" button. Deleting an attachment now also cleans up all its old version files. _Bonus: while doing this I found and fixed a pre-existing bug — the "Rename" button on attachments was silently failing because the database was missing an update permission rule; that's fixed too._ ⚠️ _This one added a new database table, so it needs `npm run db:reset` (then `npm run db:types`) before testing — see note below._
 - [ ] 🟡 **"Copy link" / shareable links** — sharing is person-by-person only right now; no link-based access
 - [ ] 🟢 **Pagination on long notes/document lists**
 - [ ] 🔴 **Production setup** — real hosting, backups, error monitoring (not set up yet)

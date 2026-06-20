@@ -19,6 +19,7 @@ export type SheetTemplate = Database["public"]["Tables"]["sheet_templates"]["Row
 export type SheetTemplateVersion = Database["public"]["Tables"]["sheet_template_versions"]["Row"];
 export type Contact = Database["public"]["Tables"]["contacts"]["Row"];
 export type Document = Database["public"]["Tables"]["documents"]["Row"];
+export type DocumentVersion = Database["public"]["Tables"]["document_versions"]["Row"];
 export type Note = Database["public"]["Tables"]["notes"]["Row"];
 export type Invitation = Database["public"]["Tables"]["invitations"]["Row"];
 export type Activity = Database["public"]["Tables"]["activity"]["Row"];
