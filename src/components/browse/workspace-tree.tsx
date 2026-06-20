@@ -54,7 +54,7 @@ function FolderNode({
   return (
     <li>
       <div
-        className="group flex items-center gap-1 py-1 pr-2 hover:bg-muted/40"
+        className="group mx-1 flex items-center gap-1 rounded-md py-1 pr-2 transition-colors hover:bg-accent"
         style={{ paddingLeft: `${depth * 12 + 8}px` }}
       >
         <button
@@ -197,13 +197,15 @@ function SheetRow({
       <Link
         href={`/sheets/${sheet.id}`}
         className={cn(
-          "flex items-center gap-2 py-1.5 pr-3 text-sm transition-colors hover:bg-muted/50",
-          active && "bg-muted font-medium",
+          "mx-1 flex items-center gap-2 rounded-md py-1.5 pr-3 text-sm transition-colors",
+          active ? "bg-primary/10 font-medium text-primary" : "hover:bg-accent",
         )}
         style={{ paddingLeft: `${depth * 12 + 28}px` }}
         aria-current={active ? "page" : undefined}
       >
-        <FileSpreadsheetIcon className="size-4 shrink-0 text-muted-foreground" />
+        <FileSpreadsheetIcon
+          className={cn("size-4 shrink-0", active ? "text-primary" : "text-muted-foreground")}
+        />
         <span className="truncate">{sheet.name}</span>
       </Link>
     </li>
@@ -272,7 +274,7 @@ export function WorkspaceTree({
   }
 
   return (
-    <div className="border-x border-b">
+    <div className="border-x border-b py-1">
       <ul>
         {tree.folders.map((node) => (
           <FolderNode
