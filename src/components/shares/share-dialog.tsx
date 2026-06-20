@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { UserPicker } from "./user-picker";
+import { ShareLinkSection } from "./share-link-section";
 import { toast } from "sonner";
 
 const RESOURCE_LABELS: Record<ShareResourceType, string> = {
@@ -225,6 +226,8 @@ export function ShareDialog({
               </ul>
             )}
           </div>
+
+          {resourceType === "sheet" && <ShareLinkSection sheetId={resourceId} />}
         </div>
       </DialogContent>
     </Dialog>

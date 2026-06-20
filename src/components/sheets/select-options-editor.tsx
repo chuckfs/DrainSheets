@@ -14,7 +14,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 const COLOR_PRESETS = ["gray", "blue", "green", "red", "yellow", "purple", "orange", "pink", "teal"];
 

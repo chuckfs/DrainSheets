@@ -12,9 +12,15 @@ export type NoteWithAuthor = Note & {
   author: Pick<Profile, "id" | "name" | "email">;
 };
 
-export async function listNotes(sheetId: string, rowId?: string | null): Promise<NoteWithAuthor[]> {
+export async function listNotes(
+  sheetId: string,
+  rowId?: string | null,
+  options?: { limit?: number; offset?: number },
+): Promise<NoteWithAuthor[]> {
   await requireProfile();
   const supabase = await createClient();
+  const limit = Math.min(Math.max(options?.limit ?? 25, 1), 100);
+  const offset = Math.max(options?.offset ?? 0, 0);
 
   let query = supabase
     .from("notes")
@@ -36,6 +42,8 @@ export async function listNotes(sheetId: string, rowId?: string | null): Promise
   } else {
     query = query.is("row_id", null);
   }
+
+  query = query.range(offset, offset + limit - 1);
 
   const { data, error } = await query;
 

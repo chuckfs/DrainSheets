@@ -60,8 +60,6 @@ describe.skipIf(!dbAvailable)("Template seeds", () => {
 
   for (const key of SYSTEM_TEMPLATE_KEYS) {
     it(`template ${key} has version 1 with expected columns`, async () => {
-      const templateId = TEMPLATE_IDS[key];
-
       const version = await asUser(pool, FIXTURE.ownerId, async (client) => {
         const { rows } = await client.query<{ columns: unknown }>(
           `

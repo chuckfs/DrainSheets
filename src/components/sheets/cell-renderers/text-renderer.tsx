@@ -1,6 +1,5 @@
 "use client";
 
-import type { ComponentType } from "react";
 import { cn } from "@/lib/utils";
 import { CellInput } from "./cell-input";
 import type { CellRendererProps } from "./types";

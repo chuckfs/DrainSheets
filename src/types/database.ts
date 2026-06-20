@@ -182,6 +182,67 @@ export type Database = {
           },
         ]
       }
+      document_versions: {
+        Row: {
+          created_at: string
+          document_id: string
+          file_name: string
+          file_path: string
+          file_size: number | null
+          id: string
+          mime_type: string | null
+          org_id: string
+          uploaded_by: string | null
+          version_no: number
+        }
+        Insert: {
+          created_at?: string
+          document_id: string
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          org_id: string
+          uploaded_by?: string | null
+          version_no: number
+        }
+        Update: {
+          created_at?: string
+          document_id?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          org_id?: string
+          uploaded_by?: string | null
+          version_no?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_versions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_versions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_versions_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           created_at: string
@@ -255,67 +316,6 @@ export type Database = {
           },
           {
             foreignKeyName: "documents_uploaded_by_fkey"
-            columns: ["uploaded_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      document_versions: {
-        Row: {
-          created_at: string
-          document_id: string
-          file_name: string
-          file_path: string
-          file_size: number | null
-          id: string
-          mime_type: string | null
-          org_id: string
-          uploaded_by: string | null
-          version_no: number
-        }
-        Insert: {
-          created_at?: string
-          document_id: string
-          file_name: string
-          file_path: string
-          file_size?: number | null
-          id?: string
-          mime_type?: string | null
-          org_id: string
-          uploaded_by?: string | null
-          version_no: number
-        }
-        Update: {
-          created_at?: string
-          document_id?: string
-          file_name?: string
-          file_path?: string
-          file_size?: number | null
-          id?: string
-          mime_type?: string | null
-          org_id?: string
-          uploaded_by?: string | null
-          version_no?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "document_versions_document_id_fkey"
-            columns: ["document_id"]
-            isOneToOne: false
-            referencedRelation: "documents"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "document_versions_org_id_fkey"
-            columns: ["org_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "document_versions_uploaded_by_fkey"
             columns: ["uploaded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -948,6 +948,64 @@ export type Database = {
           },
         ]
       }
+      sheet_share_links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          org_id: string
+          role: Database["public"]["Enums"]["access_role"]
+          sheet_id: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          org_id: string
+          role?: Database["public"]["Enums"]["access_role"]
+          sheet_id: string
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          org_id?: string
+          role?: Database["public"]["Enums"]["access_role"]
+          sheet_id?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sheet_share_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sheet_share_links_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sheet_share_links_sheet_id_fkey"
+            columns: ["sheet_id"]
+            isOneToOne: true
+            referencedRelation: "sheets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sheet_templates: {
         Row: {
           created_at: string
@@ -1159,6 +1217,10 @@ export type Database = {
         Args: { check_workspace_id: string }
         Returns: boolean
       }
+      can_delete_document_storage: {
+        Args: { check_user_id?: string; path: string }
+        Returns: boolean
+      }
       current_profile: {
         Args: never
         Returns: {
@@ -1180,6 +1242,10 @@ export type Database = {
       }
       current_user_org_id: { Args: never; Returns: string }
       default_organization_id: { Args: never; Returns: string }
+      documents_storage_path_document_id: {
+        Args: { path: string }
+        Returns: string
+      }
       documents_storage_path_org_id: { Args: { path: string }; Returns: string }
       documents_storage_path_sheet_id: {
         Args: { path: string }

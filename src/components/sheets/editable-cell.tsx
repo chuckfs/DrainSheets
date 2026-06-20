@@ -34,7 +34,6 @@ function EditableCellComponent({
   grid,
   rowIndex,
   colIndex,
-  rowId,
   column,
   value,
   isSelected,

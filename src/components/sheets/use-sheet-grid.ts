@@ -343,15 +343,6 @@ export function useSheetGrid({
     [columns, getCellValue, history, readOnly],
   );
 
-  const commitCellSilent = useCallback(
-    async (rowIndex: number, colIndex: number, value: Json | undefined) => {
-      skipHistoryRef.current = true;
-      await commitCell(rowIndex, colIndex, value);
-      skipHistoryRef.current = false;
-    },
-    [commitCell],
-  );
-
   const batchCommitCells = useCallback(
     async (
       updates: Array<{ rowIndex: number; colIndex: number; value: Json | undefined }>,

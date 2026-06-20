@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AccessContext } from "@/lib/access/effective-role";
@@ -17,7 +18,10 @@ function ScopedNotes({
   access: AccessContext;
   currentUserId: string;
 }) {
-  const { notes, loading, reload } = useNotesLoader(sheetId, rowId);
+  const { notes, loading, loadingMore, hasMore, reload, loadMore } = useNotesLoader(
+    sheetId,
+    rowId,
+  );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -26,12 +30,27 @@ function ScopedNotes({
           {loading ? (
             <p className="py-6 text-center text-sm text-muted-foreground">Loading notes…</p>
           ) : (
-            <NotesList
-              notes={notes}
-              access={access}
-              currentUserId={currentUserId}
-              onNotesChange={reload}
-            />
+            <>
+              <NotesList
+                notes={notes}
+                access={access}
+                currentUserId={currentUserId}
+                onNotesChange={reload}
+              />
+              {hasMore && (
+                <div className="mt-3 text-center">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={loadingMore}
+                    onClick={loadMore}
+                  >
+                    {loadingMore ? "Loading…" : "Load more"}
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </ScrollArea>

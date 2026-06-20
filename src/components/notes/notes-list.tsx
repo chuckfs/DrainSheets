@@ -128,26 +128,45 @@ export function NotesComposer({
   );
 }
 
+const NOTES_PAGE_SIZE = 25;
+
 export function useNotesLoader(sheetId: string, rowId?: string | null) {
   const [notes, setNotes] = useState<NoteWithAuthor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
 
-  async function reload() {
-    setLoading(true);
+  async function load(offset: number, append: boolean) {
+    if (append) setLoadingMore(true);
+    else setLoading(true);
     try {
-      const data = await listNotes(sheetId, rowId ?? null);
-      setNotes(data);
+      const data = await listNotes(sheetId, rowId ?? null, {
+        limit: NOTES_PAGE_SIZE,
+        offset,
+      });
+      setNotes((previous) => (append ? [...previous, ...data] : data));
+      setHasMore(data.length === NOTES_PAGE_SIZE);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to load notes");
-      setNotes([]);
+      if (!append) setNotes([]);
     } finally {
-      setLoading(false);
+      if (append) setLoadingMore(false);
+      else setLoading(false);
     }
   }
 
+  function reload() {
+    void load(0, false);
+  }
+
+  function loadMore() {
+    if (loadingMore || !hasMore) return;
+    void load(notes.length, true);
+  }
+
   useEffect(() => {
-    void reload();
+    void load(0, false);
   }, [sheetId, rowId]);
 
-  return { notes, loading, reload };
+  return { notes, loading, loadingMore, hasMore, reload, loadMore };
 }

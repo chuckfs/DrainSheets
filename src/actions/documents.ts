@@ -34,9 +34,12 @@ export async function listDocuments(
   sheetId: string,
   scope: DocumentScope = "all",
   rowId?: string | null,
+  options?: { limit?: number; offset?: number },
 ): Promise<DocumentWithUploader[]> {
   await requireProfile();
   const supabase = await createClient();
+  const limit = Math.min(Math.max(options?.limit ?? 25, 1), 100);
+  const offset = Math.max(options?.offset ?? 0, 0);
 
   let query = supabase
     .from("documents")
@@ -60,6 +63,8 @@ export async function listDocuments(
   } else if (scope === "row") {
     query = query.not("row_id", "is", null);
   }
+
+  query = query.range(offset, offset + limit - 1);
 
   const { data, error } = await query;
 

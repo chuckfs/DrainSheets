@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { DocumentScope } from "@/actions/documents";
@@ -21,7 +22,11 @@ function ScopedAttachments({
   access: AccessContext;
   currentUserId: string;
 }) {
-  const { documents, loading, reload } = useDocumentsLoader(sheetId, scope, rowId);
+  const { documents, loading, loadingMore, hasMore, reload, loadMore } = useDocumentsLoader(
+    sheetId,
+    scope,
+    rowId,
+  );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -30,12 +35,27 @@ function ScopedAttachments({
           {loading ? (
             <p className="py-6 text-center text-sm text-muted-foreground">Loading attachments…</p>
           ) : (
-            <DocumentList
-              documents={documents}
-              access={access}
-              currentUserId={currentUserId}
-              onChange={reload}
-            />
+            <>
+              <DocumentList
+                documents={documents}
+                access={access}
+                currentUserId={currentUserId}
+                onChange={reload}
+              />
+              {hasMore && (
+                <div className="mt-3 text-center">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={loadingMore}
+                    onClick={loadMore}
+                  >
+                    {loadingMore ? "Loading…" : "Load more"}
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </ScrollArea>
