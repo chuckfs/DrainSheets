@@ -40,8 +40,8 @@ _Last updated: June 19, 2026_
 ## Needs finishing (the gaps that actually matter)
 
 - [x] ✅ **Send a "Quick Update" email from a row** — DONE (Jun 19). Rebuilt for the new sheet model: there's now a **"Send update" button** in the row drawer that opens a dialog (To / Subject / Message / pick which columns to include / attach files / Cc me / Send). Sends through Resend and logs every send. _Note: needs the Resend keys set in the app's settings to actually deliver — the code shows a clear message if they're missing._
-- [ ] 🟡 **Sort and filter columns** — right now rows only show in their saved order. No "sort by Status" or "show only interested tenants." Basic spreadsheet expectation, currently missing.
-- [ ] 🟢 **Fix the file-delete permission bug** — a viewer can currently delete the actual files, not just hide them. Small fix, but should happen before anyone real uses it.
+- [x] ✅ **Sort and filter columns** — DONE (Jun 19). A toolbar bar above the grid now lets you **sort** by any column (A→Z / Z→A, and numbers/dates sort correctly, not as text) and **filter** rows by one or more conditions (e.g. "Status is interested", "Company contains retail", "is empty"). Shows a live "Showing X of Y" count. _Two notes: (1) a filtered/sorted view loads up to 2,000 rows at once — fine for normal sheets, ties into the "big sheets load in chunks" item for anything larger; (2) verified by typecheck + lint, but should get a quick click-test in the running app since I couldn't run the database here._
+- [x] ✅ **Fix the file-delete permission bug** — DONE (already fixed in the project as database migration `0013`). A viewer can no longer delete files; only a sheet admin or the person who uploaded the file can. Verified the fix actually closes the hole. _(Tiny known edge: if a file upload fails midway, its leftover file may not auto-clean for non-admins — harmless wasted space, not a security or data issue. Optional to tidy later.)_
 - [ ] 🔴 **Make big sheets load in chunks** — today the grid loads *every* row at once. Fine for a few hundred or a couple thousand (most CRE sheets), but it'll struggle in the tens of thousands. Only worth doing when sheet sizes get large.
 - [ ] 🟡 **Add tests for the in-grid editing** — copy/paste, fill-down, and undo/redo work but have no automated safety net, so they're the most likely spot for hidden bugs.
 
@@ -72,9 +72,9 @@ These showed up in Smartsheet's menus but the broker never used them — they're
 
 ## If we only do a few things next (suggested order)
 
-1. [ ] Fix the file-delete permission bug (🟢 quick, it's a security hole)
+1. [x] ~~Fix the file-delete permission bug~~ ✅ done Jun 19 (migration 0013)
 2. [x] ~~Reconnect the email update button~~ ✅ done Jun 19
-3. [ ] Add column sort + filter (🟡, everyone expects it)
+3. [x] ~~Add column sort + filter~~ ✅ done Jun 19
 4. [ ] Add tests around the grid editing (🟡, lock in what already works)
 5. [ ] Chunked loading for big sheets (🔴, when sheets get large)
 

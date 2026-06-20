@@ -14,9 +14,25 @@ import { createRowSchema, updateRowSchema, deleteRowSchema, reorderRowSchema, bu
 import type { Json } from "@/types/database";
 import type { Row, RowData } from "@/types/domain";
 import { computeRowReorder } from "@/lib/sheets/row-position";
+import type { RowFilterCondition } from "@/lib/sheets/row-view";
 
 function toRowJson(data: RowData): Json {
   return data as Json;
+}
+
+/** Hard cap on how many rows a filtered/sorted view loads into the client at once. */
+export const ROW_VIEW_CAP = 2000;
+
+async function getColumnKeySet(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  sheetId: string,
+): Promise<Set<string>> {
+  const { data } = await supabase.from("sheet_columns").select("key").eq("sheet_id", sheetId);
+  return new Set((data ?? []).map((column) => column.key as string));
+}
+
+function rowJsonPath(columnKey: string): string {
+  return `data->>${columnKey}`;
 }
 
 export async function countRows(sheetId: string): Promise<number> {
@@ -32,6 +48,103 @@ export async function countRows(sheetId: string): Promise<number> {
     throw new Error(error.message);
   }
 
+  return count ?? 0;
+}
+
+/**
+ * Rows matching a set of filters, ordered by position, capped at ROW_VIEW_CAP.
+ * Filter column keys are validated against the sheet's real columns. Values are
+ * parameterized by the query builder. Sorting is applied client-side (type-aware).
+ */
+export async function listSheetRowsView(
+  sheetId: string,
+  filters: RowFilterCondition[],
+  limit: number = ROW_VIEW_CAP,
+): Promise<Row[]> {
+  await requireProfile();
+  const supabase = await createClient();
+  const validKeys = await getColumnKeySet(supabase, sheetId);
+
+  let query = supabase
+    .from("rows")
+    .select("*")
+    .eq("sheet_id", sheetId)
+    .order("position", { ascending: true })
+    .limit(Math.min(Math.max(limit, 1), ROW_VIEW_CAP));
+
+  for (const filter of filters) {
+    if (!validKeys.has(filter.columnKey)) {
+      continue;
+    }
+    const column = rowJsonPath(filter.columnKey);
+    switch (filter.operator) {
+      case "contains":
+        query = query.ilike(column, `%${filter.value}%`);
+        break;
+      case "equals":
+        query = query.eq(column, filter.value);
+        break;
+      case "not_equals":
+        query = query.neq(column, filter.value);
+        break;
+      case "is_empty":
+        query = query.is(column, null);
+        break;
+      case "is_not_empty":
+        query = query.not(column, "is", null);
+        break;
+    }
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    throw new Error(error.message);
+  }
+  return data ?? [];
+}
+
+/** Total number of rows matching the filters (uncapped), for "showing X of Y". */
+export async function countSheetRowsView(
+  sheetId: string,
+  filters: RowFilterCondition[],
+): Promise<number> {
+  await requireProfile();
+  const supabase = await createClient();
+  const validKeys = await getColumnKeySet(supabase, sheetId);
+
+  let query = supabase
+    .from("rows")
+    .select("id", { count: "exact", head: true })
+    .eq("sheet_id", sheetId);
+
+  for (const filter of filters) {
+    if (!validKeys.has(filter.columnKey)) {
+      continue;
+    }
+    const column = rowJsonPath(filter.columnKey);
+    switch (filter.operator) {
+      case "contains":
+        query = query.ilike(column, `%${filter.value}%`);
+        break;
+      case "equals":
+        query = query.eq(column, filter.value);
+        break;
+      case "not_equals":
+        query = query.neq(column, filter.value);
+        break;
+      case "is_empty":
+        query = query.is(column, null);
+        break;
+      case "is_not_empty":
+        query = query.not(column, "is", null);
+        break;
+    }
+  }
+
+  const { count, error } = await query;
+  if (error) {
+    throw new Error(error.message);
+  }
   return count ?? 0;
 }
 

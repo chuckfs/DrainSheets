@@ -2,9 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import { getContactsByIds, searchContacts, type ContactPickerItem } from "@/actions/contacts";
-import { getRow } from "@/actions/rows";
+import { countSheetRowsView, getRow, listSheetRowsView } from "@/actions/rows";
 import type { AccessContext } from "@/lib/access/effective-role";
+import {
+  isRowViewActive,
+  sortRows,
+  type RowFilterCondition,
+  type RowSort,
+} from "@/lib/sheets/row-view";
 import type { SheetTemplateProvenance } from "@/actions/templates";
 import { ListPageShell } from "@/components/layout/list-page-shell";
 import { getLoadedRows } from "@/lib/sheets/row-window";
@@ -20,6 +27,7 @@ import { RowDetailDrawer } from "./row-detail-drawer";
 import { SheetContactContext } from "./sheet-contact-context";
 import { SheetGrid } from "./sheet-grid";
 import { SheetToolbar } from "./sheet-toolbar";
+import { SheetViewControls } from "./sheet-view-controls";
 import { useSheetClipboard } from "./use-sheet-clipboard";
 import { useSheetGrid } from "./use-sheet-grid";
 import { useSheetKeyboard } from "./use-sheet-keyboard";
@@ -73,11 +81,59 @@ export function SheetSpreadsheet({
   const [rowDrawerOpen, setRowDrawerOpen] = useState(Boolean(initialRowId));
   const [drawerRow, setDrawerRow] = useState<Row | null>(null);
 
+  // Sort + filter ("view"). Filtering happens server-side; sorting is applied
+  // client-side here so it is type-aware. The hook is fed an effective row set
+  // and never needs to know a view is active.
+  const [sort, setSort] = useState<RowSort | null>(null);
+  const [filters, setFilters] = useState<RowFilterCondition[]>([]);
+  const [viewRows, setViewRows] = useState<Row[] | null>(null);
+  const [viewTotal, setViewTotal] = useState(0);
+  const [viewLoading, setViewLoading] = useState(false);
+  const viewActive = isRowViewActive(sort, filters);
+
+  useEffect(() => {
+    if (!viewActive) {
+      setViewRows(null);
+      setViewTotal(0);
+      return;
+    }
+    let cancelled = false;
+    setViewLoading(true);
+    Promise.all([listSheetRowsView(sheet.id, filters), countSheetRowsView(sheet.id, filters)])
+      .then(([rows, total]) => {
+        if (cancelled) return;
+        setViewRows(rows);
+        setViewTotal(total);
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        toast.error(error instanceof Error ? error.message : "Failed to apply view");
+        setViewRows([]);
+        setViewTotal(0);
+      })
+      .finally(() => {
+        if (!cancelled) setViewLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // `sort` is intentionally excluded: it re-sorts the fetched set client-side
+    // (below) without needing to re-query.
+  }, [viewActive, sheet.id, filters]);
+
+  const sortedViewRows = useMemo(() => {
+    if (viewRows === null) return null;
+    return sort ? sortRows(viewRows, sort, initialColumns) : viewRows;
+  }, [viewRows, sort, initialColumns]);
+
+  const effectiveRows = sortedViewRows ?? initialRows;
+  const effectiveRowCount = sortedViewRows ? sortedViewRows.length : initialRowCount;
+
   const grid = useSheetGrid({
     sheetId: sheet.id,
     initialColumns,
-    initialRows,
-    initialRowCount,
+    initialRows: effectiveRows,
+    initialRowCount: effectiveRowCount,
     readOnly: !access.canEdit,
   });
 
@@ -193,6 +249,17 @@ export function SheetSpreadsheet({
               access={access}
               templateProvenance={templateProvenance}
               collaborationToggle={<CollaborationRailToggle onOpen={() => setMobileOpen(true)} />}
+            />
+            <SheetViewControls
+              columns={grid.columns}
+              sort={sort}
+              filters={filters}
+              onSortChange={setSort}
+              onFiltersChange={setFilters}
+              shown={effectiveRowCount}
+              total={viewActive ? viewTotal : initialRowCount}
+              capped={viewActive && viewTotal > effectiveRowCount}
+              loading={viewLoading}
             />
             <BulkToolbar grid={grid} />
           </>

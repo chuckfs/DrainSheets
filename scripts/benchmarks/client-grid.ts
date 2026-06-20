@@ -7,6 +7,7 @@ import {
   createSparseRowStore,
   mergeRowsIntoStore,
 } from "../../src/lib/sheets/row-window";
+import type { Json } from "../../src/types/database";
 import type { ColumnType, Row, SheetColumn } from "../../src/types/domain";
 import { runTimedSamples } from "./stats";
 import type { LatencySample } from "./types";
@@ -73,7 +74,7 @@ function makeSparseValueGetter(store: (Row | null)[]) {
       return undefined;
     }
 
-    return (row.data as Record<string, unknown>)[`field_${colIndex}`];
+    return (row.data as Record<string, Json | undefined>)[`field_${colIndex}`];
   };
 }
 
