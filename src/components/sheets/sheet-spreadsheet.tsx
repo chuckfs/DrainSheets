@@ -26,7 +26,6 @@ import {
 import { RowDetailDrawer } from "./row-detail-drawer";
 import { SheetClipboardProvider } from "./sheet-clipboard-context";
 import { SheetContactContext } from "./sheet-contact-context";
-import { SheetFormatToolbar } from "./sheet-format-toolbar";
 import { SheetGrid } from "./sheet-grid";
 import { SheetRibbonToolbar } from "./sheet-ribbon-toolbar";
 import { SheetToolbar } from "./sheet-toolbar";
@@ -299,7 +298,6 @@ export function SheetSpreadsheet({
               filterActive={filters.length > 0 || filterOpen}
               onToggleFilter={() => setFilterOpen((open) => !open)}
             />
-            <SheetFormatToolbar grid={grid} />
             <SheetViewControls
               columns={grid.columns}
               sort={sort}
