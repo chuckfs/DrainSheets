@@ -24,6 +24,8 @@ import {
 } from "@/lib/templates/template-utils";
 import type { Folder, Sheet } from "@/types/domain";
 import { cn } from "@/lib/utils";
+import { useWorkspaceTreeDnD } from "@/hooks/use-workspace-tree-dnd";
+import { isInteractiveDragTarget } from "@/lib/workspaces/tree-dnd";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { ShareDialog } from "@/components/shares/share-dialog";
@@ -34,6 +36,8 @@ import { ImportDialog } from "@/components/import/import-dialog";
 import { DeleteResourceDialog } from "@/components/workspaces/delete-resource-dialog";
 import { TreeItemOverflowMenu } from "@/components/workspaces/tree-item-overflow-menu";
 import { toast } from "sonner";
+
+type TreeDnD = ReturnType<typeof useWorkspaceTreeDnD>;
 
 function buildFolderDeleteDescription(
   folderName: string,
@@ -69,6 +73,7 @@ function FolderNode({
   depth,
   onRefresh,
   favoriteSheetIds,
+  dnd,
 }: {
   node: WorkspaceTreeFolderNode;
   workspaceId: string;
@@ -79,6 +84,7 @@ function FolderNode({
   depth: number;
   onRefresh: () => void;
   favoriteSheetIds: Set<string>;
+  dnd: TreeDnD;
 }) {
   const [expanded, setExpanded] = useState(true);
   const [createSheetOpen, setCreateSheetOpen] = useState(false);
@@ -114,16 +120,37 @@ function FolderNode({
     return true;
   }
 
+  const isDropTarget = dnd.isFolderDropTarget(node.folder.id);
+  const isDraggingSelf =
+    dnd.dragging?.type === "folder" && dnd.dragging.id === node.folder.id;
+
   return (
     <li>
       <div
-        className="group mx-1 flex items-center gap-1 rounded-md py-1 pr-2 transition-colors hover:bg-accent"
+        draggable={dnd.canEdit}
+        className={cn(
+          "group mx-1 flex items-center gap-1 rounded-md py-1 pr-2 transition-colors hover:bg-accent",
+          isDropTarget && "bg-primary/15 ring-2 ring-inset ring-primary",
+          isDraggingSelf && "opacity-50",
+        )}
         style={{ paddingLeft: `${depth * 12 + 8}px` }}
+        onDragStart={(event) => {
+          if (isInteractiveDragTarget(event.target)) {
+            event.preventDefault();
+            return;
+          }
+          dnd.handleDragStart(event, { type: "folder", id: node.folder.id });
+        }}
+        onDragEnd={dnd.handleDragEnd}
+        onDragOver={(event) => dnd.handleFolderDragOver(event, node.folder.id)}
+        onDragLeave={dnd.handleDragLeave}
+        onDrop={(event) => dnd.handleDropOnFolder(event, node.folder.id)}
       >
         <button
           type="button"
           className="flex size-5 shrink-0 items-center justify-center rounded hover:bg-muted"
           aria-label={expanded ? "Collapse folder" : "Expand folder"}
+          data-no-tree-drag
           onClick={() => setExpanded((value) => !value)}
         >
           {hasChildren ? (
@@ -146,6 +173,7 @@ function FolderNode({
               size="icon-sm"
               className="size-6"
               aria-label="New sheet in folder"
+              data-no-tree-drag
               onClick={() => setCreateSheetOpen(true)}
             >
               <PlusIcon className="size-3.5" />
@@ -156,6 +184,7 @@ function FolderNode({
               size="icon-sm"
               className="size-6"
               aria-label="Import into folder"
+              data-no-tree-drag
               onClick={() => setImportOpen(true)}
             >
               <UploadIcon className="size-3.5" />
@@ -166,6 +195,7 @@ function FolderNode({
               size="icon-sm"
               className="size-6"
               aria-label="New subfolder"
+              data-no-tree-drag
               onClick={() => setCreateFolderOpen(true)}
             >
               <FolderPlusIcon className="size-3.5" />
@@ -206,6 +236,7 @@ function FolderNode({
               depth={depth + 1}
               favorited={favoriteSheetIds.has(sheet.id)}
               onRefresh={onRefresh}
+              dnd={dnd}
             />
           ))}
           {node.folders.map((child) => (
@@ -220,6 +251,7 @@ function FolderNode({
               depth={depth + 1}
               onRefresh={onRefresh}
               favoriteSheetIds={favoriteSheetIds}
+              dnd={dnd}
             />
           ))}
         </ul>
@@ -274,6 +306,7 @@ function SheetRow({
   depth,
   favorited,
   onRefresh,
+  dnd,
 }: {
   sheet: { id: string; name: string };
   workspaceId: string;
@@ -282,11 +315,13 @@ function SheetRow({
   depth: number;
   favorited?: boolean;
   onRefresh: () => void;
+  dnd: TreeDnD;
 }) {
   const router = useRouter();
   const active = sheet.id === activeSheetId;
   const [shareOpen, setShareOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const isDraggingSelf = dnd.dragging?.type === "sheet" && dnd.dragging.id === sheet.id;
 
   async function handleDeleteSheet(): Promise<boolean> {
     const result = await deleteSheet(sheet.id);
@@ -307,23 +342,35 @@ function SheetRow({
   return (
     <li>
       <div
+        draggable={dnd.canEdit}
         className={cn(
           "group mx-1 flex items-center gap-1 rounded-md py-1.5 pr-2 text-sm transition-colors",
           active ? "bg-primary/10 font-medium text-primary" : "hover:bg-accent",
+          isDraggingSelf && "opacity-50",
         )}
         style={{ paddingLeft: `${depth * 12 + 28}px` }}
+        onDragStart={(event) => {
+          if (isInteractiveDragTarget(event.target)) {
+            event.preventDefault();
+            return;
+          }
+          dnd.handleDragStart(event, { type: "sheet", id: sheet.id });
+        }}
+        onDragEnd={dnd.handleDragEnd}
       >
         <Link
           href={`/sheets/${sheet.id}`}
           className="flex min-w-0 flex-1 items-center gap-2"
           aria-current={active ? "page" : undefined}
+          data-no-tree-drag
+          draggable={false}
         >
           <FileSpreadsheetIcon
             className={cn("size-4 shrink-0", active ? "text-primary" : "text-muted-foreground")}
           />
           <span className="truncate">{sheet.name}</span>
         </Link>
-        <div className="flex shrink-0 items-center">
+        <div className="flex shrink-0 items-center" data-no-tree-drag>
           <SheetFavoriteButton sheetId={sheet.id} initialFavorited={Boolean(favorited)} />
           {access.canShare && (
             <div className="max-w-0 overflow-hidden opacity-0 transition-[max-width,opacity] duration-150 ease-out group-hover:max-w-6 group-hover:opacity-100 group-focus-within:max-w-6 group-focus-within:opacity-100 max-sm:max-w-6 max-sm:opacity-100">
@@ -391,10 +438,21 @@ export function WorkspaceTree({
   const favorites = favoriteSheetIds ?? new Set<string>();
 
   const tree = useMemo(() => buildWorkspaceTree(folders, sheets), [folders, sheets]);
+  const folderHierarchy = useMemo(
+    () => folders.map((folder) => ({ id: folder.id, parent_folder_id: folder.parent_folder_id })),
+    [folders],
+  );
 
   function handleRefresh() {
     router.refresh();
   }
+
+  const dnd = useWorkspaceTreeDnD({
+    canEdit: access.canEdit,
+    folders: folderHierarchy,
+    sheets,
+    onRefresh: handleRefresh,
+  });
 
   const isEmpty = folders.length === 0 && sheets.length === 0;
 
@@ -436,7 +494,20 @@ export function WorkspaceTree({
   }
 
   return (
-    <div className="border-x border-b py-1">
+    <div className={cn("border-x border-b py-1", dnd.isMoving && "pointer-events-none opacity-70")}>
+      {dnd.canEdit && dnd.dragging ? (
+        <div
+          className={cn(
+            "mx-2 mb-1 rounded-md border border-dashed px-3 py-1.5 text-xs text-muted-foreground transition-colors",
+            dnd.isRootDropTarget && "border-primary bg-primary/10 text-primary",
+          )}
+          onDragOver={dnd.handleRootDragOver}
+          onDragLeave={dnd.handleDragLeave}
+          onDrop={dnd.handleDropOnRoot}
+        >
+          Drop here to move to workspace root
+        </div>
+      ) : null}
       <ul>
         {tree.folders.map((node) => (
           <FolderNode
@@ -450,6 +521,7 @@ export function WorkspaceTree({
             depth={0}
             onRefresh={handleRefresh}
             favoriteSheetIds={favorites}
+            dnd={dnd}
           />
         ))}
         {tree.sheets.map((sheet) => (
@@ -462,6 +534,7 @@ export function WorkspaceTree({
             depth={0}
             favorited={favorites.has(sheet.id)}
             onRefresh={handleRefresh}
+            dnd={dnd}
           />
         ))}
       </ul>

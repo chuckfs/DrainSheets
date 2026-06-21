@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AppSelect } from "@/components/ui/app-select";
 import { toast } from "sonner";
 
 export function CreateFolderDialog({
@@ -98,19 +99,15 @@ export function CreateFolderDialog({
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="folder-parent">Parent folder</Label>
-            <select
+            <AppSelect
               id="folder-parent"
               value={selectedParentId}
-              className="flex h-9 w-full rounded-lg border border-input bg-background px-2 text-sm"
-              onChange={(event) => setSelectedParentId(event.target.value)}
-            >
-              <option value="">Workspace root</option>
-              {folders.map((folder) => (
-                <option key={folder.id} value={folder.id}>
-                  {folder.name}
-                </option>
-              ))}
-            </select>
+              options={[
+                { value: "", label: "Workspace root" },
+                ...folders.map((folder) => ({ value: folder.id, label: folder.name })),
+              ]}
+              onValueChange={setSelectedParentId}
+            />
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

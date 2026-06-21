@@ -29,8 +29,6 @@ import { SheetContactContext } from "./sheet-contact-context";
 import { SheetGrid } from "./sheet-grid";
 import { SheetRibbonToolbar } from "./sheet-ribbon-toolbar";
 import { SheetToolbar } from "./sheet-toolbar";
-import { SheetViewControls } from "./sheet-view-controls";
-import type { SheetViewState } from "./sheet-view-picker";
 import { useSheetClipboard } from "./use-sheet-clipboard";
 import { useSheetGrid } from "./use-sheet-grid";
 import { useSheetKeyboard } from "./use-sheet-keyboard";
@@ -221,40 +219,6 @@ export function SheetSpreadsheet({
     [contactsById],
   );
 
-  const viewState = useMemo<SheetViewState>(
-    () => ({
-      sort,
-      filters,
-      hiddenColumnKeys: grid.columns.filter((column) => column.is_hidden).map((column) => column.key),
-      hiddenRowIds: grid.rows
-        .filter((row): row is Row => row !== null && row.is_hidden)
-        .map((row) => row.id),
-    }),
-    [filters, grid.columns, grid.rows, sort],
-  );
-
-  const applyViewState = useCallback(
-    async (state: SheetViewState) => {
-      setSort(state.sort);
-      setFilters(state.filters);
-
-      const columnIdsToHide = state.hiddenColumnKeys
-        .map((key) => grid.columns.find((column) => column.key === key)?.id)
-        .filter((columnId): columnId is string => Boolean(columnId));
-
-      await grid.unhideAllColumns();
-      for (const columnId of columnIdsToHide) {
-        await grid.hideColumnById(columnId);
-      }
-
-      await grid.unhideAllRows();
-      for (const rowId of state.hiddenRowIds) {
-        await grid.hideRowById(rowId);
-      }
-    },
-    [grid],
-  );
-
   function openRow(rowId: string) {
     const params = new URLSearchParams(searchParams.toString());
     params.set("row", rowId);
@@ -281,7 +245,7 @@ export function SheetSpreadsheet({
       <SheetClipboardProvider clipboard={clipboard}>
       <ListPageShell
         header={
-          <>
+          <div className="select-none">
             <SheetToolbar
               sheet={sheet}
               grid={grid}
@@ -293,12 +257,10 @@ export function SheetSpreadsheet({
               grid={grid}
               clipboard={clipboard}
               sheetId={sheet.id}
-              viewState={viewState}
-              onApplyViewState={(state) => void applyViewState(state)}
               filterActive={filters.length > 0 || filterOpen}
+              filterOpen={filterOpen}
               onToggleFilter={() => setFilterOpen((open) => !open)}
-            />
-            <SheetViewControls
+              onFilterOpenChange={setFilterOpen}
               columns={grid.columns}
               sort={sort}
               filters={filters}
@@ -308,11 +270,9 @@ export function SheetSpreadsheet({
               total={viewActive ? viewTotal : initialRowCount}
               capped={viewActive && viewTotal > effectiveRowCount}
               loading={viewLoading}
-              filterOpen={filterOpen}
-              onFilterOpenChange={setFilterOpen}
             />
             <BulkToolbar grid={grid} />
-          </>
+          </div>
         }
       >
         <div className="flex min-h-0 flex-1">

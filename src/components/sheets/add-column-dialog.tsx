@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AppSelect } from "@/components/ui/app-select";
 
 const COLUMN_TYPES: { value: ColumnType; label: string }[] = [
   { value: "text", label: "Text" },
@@ -80,18 +81,12 @@ export function AddColumnDialog({
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="column-type">Type</Label>
-            <select
+            <AppSelect
               id="column-type"
               value={type}
-              className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm"
-              onChange={(event) => setType(event.target.value as ColumnType)}
-            >
-              {COLUMN_TYPES.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+              options={COLUMN_TYPES}
+              onValueChange={(next) => setType(next as ColumnType)}
+            />
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

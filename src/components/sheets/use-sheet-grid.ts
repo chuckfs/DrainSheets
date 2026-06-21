@@ -1139,6 +1139,22 @@ export function useSheetGrid({
     bumpSelectionEpoch();
   }, [bumpSelectionEpoch]);
 
+  const selectAll = useCallback(() => {
+    const colCount = columns.length;
+    if (colCount === 0 || totalRowCount === 0) {
+      return;
+    }
+
+    const start: CellCoord = { rowIndex: 0, colIndex: 0 };
+    const end: CellCoord = { rowIndex: totalRowCount - 1, colIndex: colCount - 1 };
+
+    setEditingCell(null);
+    selectionAnchorRef.current = start;
+    setSelectedCell(end);
+    setSelectionRange({ start, end });
+    bumpSelectionEpoch();
+  }, [bumpSelectionEpoch, columns.length, totalRowCount]);
+
   const beginSelection = useCallback(
     (
       coord: CellCoord,
@@ -1896,6 +1912,7 @@ export function useSheetGrid({
     freezeColumnsThrough,
     unfreezeAllColumns,
     clearSelection,
+    selectAll,
     getColumnWidth: (column: SheetColumn | ColumnLayout) => getColumnWidth(column),
     syncState,
     showHiddenRows,

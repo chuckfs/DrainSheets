@@ -44,14 +44,15 @@ import {
   TEXT_COLOR_PRESETS,
   fillPresetStorageValue,
 } from "@/lib/sheets/cell-style";
-import type { RowFilterCondition } from "@/lib/sheets/row-view";
+import type { RowFilterCondition, RowSort } from "@/lib/sheets/row-view";
+import type { SheetColumn } from "@/types/domain";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { SheetClipboardController } from "./use-sheet-clipboard";
 import { SheetDecimalControls } from "./sheet-decimal-controls";
+import { SheetFilterPanel, SheetSortControls, SheetViewStatus } from "./sheet-view-controls";
 import { SheetFreezeMenu } from "./sheet-freeze-menu";
 import { SheetSyncIndicator } from "./sheet-sync-indicator";
-import { SheetViewPicker, type SheetViewState } from "./sheet-view-picker";
 import type { SheetGridController } from "./use-sheet-grid";
 
 function ToolbarDivider() {
@@ -236,18 +237,36 @@ export function SheetRibbonToolbar({
   grid,
   clipboard,
   filterActive,
+  filterOpen,
   onToggleFilter,
+  onFilterOpenChange,
   sheetId,
-  viewState,
-  onApplyViewState,
+  columns,
+  sort,
+  filters,
+  onSortChange,
+  onFiltersChange,
+  shown,
+  total,
+  capped,
+  loading,
 }: {
   grid: SheetGridController;
   clipboard: SheetClipboardController;
   filterActive?: boolean;
+  filterOpen?: boolean;
   onToggleFilter?: () => void;
+  onFilterOpenChange?: (open: boolean) => void;
   sheetId: string;
-  viewState: SheetViewState;
-  onApplyViewState: (state: SheetViewState) => void;
+  columns: SheetColumn[];
+  sort: RowSort | null;
+  filters: RowFilterCondition[];
+  onSortChange: (sort: RowSort | null) => void;
+  onFiltersChange: (filters: RowFilterCondition[]) => void;
+  shown: number;
+  total: number;
+  capped: boolean;
+  loading: boolean;
 }) {
   const readOnly = grid.readOnly;
   const activeColumn = grid.getActiveColumn();
@@ -277,7 +296,7 @@ export function SheetRibbonToolbar({
   function handleExport(format: "csv" | "xlsx") {
     startExport(async () => {
       const result = await exportSheetData(sheetId, format, {
-        filters: viewState.filters as RowFilterCondition[],
+        filters,
         includeHidden: grid.showHiddenRows || grid.showHiddenColumns,
       });
 
@@ -292,31 +311,30 @@ export function SheetRibbonToolbar({
   }
 
   return (
-    <GridToolbar
-      left={
+    <>
+      <GridToolbar
+        left={
         <>
           <Button
             type="button"
-            size="sm"
+            size="icon-sm"
             variant="ghost"
-            className="h-7 gap-1 px-2 text-xs"
+            className="size-7"
             aria-label="Save"
             disabled={readOnly}
             onClick={handleSave}
           >
             <SaveIcon className="size-3.5" />
-            Save
           </Button>
           <Button
             type="button"
-            size="sm"
+            size="icon-sm"
             variant="ghost"
-            className="h-7 gap-1 px-2 text-xs"
+            className="size-7"
             aria-label="Print"
             onClick={handlePrint}
           >
             <PrinterIcon className="size-3.5" />
-            Print
           </Button>
           <ToolbarDivider />
           {readOnly ? (
@@ -399,6 +417,7 @@ export function SheetRibbonToolbar({
       }
       center={
         <>
+          <SheetSortControls columns={columns} sort={sort} onSortChange={onSortChange} />
           <SheetDecimalControls grid={grid} column={activeColumn} />
           {onToggleFilter ? (
             <Button
@@ -409,13 +428,16 @@ export function SheetRibbonToolbar({
               onClick={onToggleFilter}
             >
               <FilterIcon className="size-3.5" />
-              Filter
+              Filter{filters.length > 0 ? ` (${filters.length})` : ""}
             </Button>
           ) : null}
-          <SheetViewPicker
-            sheetId={sheetId}
-            currentState={viewState}
-            onApplyState={(state) => onApplyViewState(state)}
+          <SheetViewStatus
+            sort={sort}
+            filters={filters}
+            shown={shown}
+            total={total}
+            capped={capped}
+            loading={loading}
           />
         </>
       }
@@ -470,5 +492,15 @@ export function SheetRibbonToolbar({
         </>
       }
     />
+      {onFilterOpenChange ? (
+        <SheetFilterPanel
+          columns={columns}
+          filters={filters}
+          open={Boolean(filterOpen)}
+          onOpenChange={onFilterOpenChange}
+          onFiltersChange={onFiltersChange}
+        />
+      ) : null}
+    </>
   );
 }

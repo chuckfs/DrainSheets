@@ -14,10 +14,14 @@ import type { AccessRole } from "@/types/domain";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AppSelect } from "@/components/ui/app-select";
 
 const LINK_ROLES: AccessRole[] = ["viewer", "commenter", "editor"];
-const selectClass =
-  "h-8 rounded-md border border-input bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring";
+
+const LINK_ROLE_OPTIONS = LINK_ROLES.map((role) => ({
+  value: role,
+  label: accessRoleLabel(role),
+}));
 
 export function ShareLinkSection({ sheetId }: { sheetId: string }) {
   const [link, setLink] = useState<SheetShareLink | null>(null);
@@ -118,18 +122,12 @@ export function ShareLinkSection({ sheetId }: { sheetId: string }) {
             <Label htmlFor="link-role" className="text-xs">
               Anyone in your org with the link can
             </Label>
-            <select
+            <AppSelect
               id="link-role"
-              className={`${selectClass} w-full`}
               value={draftRole}
-              onChange={(event) => setDraftRole(event.target.value as AccessRole)}
-            >
-              {LINK_ROLES.map((role) => (
-                <option key={role} value={role}>
-                  {accessRoleLabel(role)}
-                </option>
-              ))}
-            </select>
+              options={LINK_ROLE_OPTIONS}
+              onValueChange={(role) => setDraftRole(role as AccessRole)}
+            />
           </div>
           <Button type="button" size="sm" disabled={isPending} onClick={handleCreate}>
             Create link
@@ -145,18 +143,14 @@ export function ShareLinkSection({ sheetId }: { sheetId: string }) {
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <span className="text-muted-foreground">Access:</span>
-            <select
-              className={selectClass}
+            <AppSelect
+              size="sm"
+              triggerClassName="h-8 w-auto"
               value={link.role}
               disabled={isPending}
-              onChange={(event) => handleRoleChange(event.target.value as AccessRole)}
-            >
-              {LINK_ROLES.map((role) => (
-                <option key={role} value={role}>
-                  {accessRoleLabel(role)}
-                </option>
-              ))}
-            </select>
+              options={LINK_ROLE_OPTIONS}
+              onValueChange={(role) => handleRoleChange(role as AccessRole)}
+            />
             <span
               className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
                 link.is_active

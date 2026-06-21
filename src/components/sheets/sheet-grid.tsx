@@ -116,6 +116,7 @@ export function SheetGrid({
       role="grid"
       aria-rowcount={totalRowCount}
       aria-colcount={columnLayout.length}
+      className="select-none"
     >
       <div ref={scrollRef} className="max-h-[calc(100vh-12rem)] overflow-auto">
         <SmartsheetGrid className="overflow-visible border-x border-b">

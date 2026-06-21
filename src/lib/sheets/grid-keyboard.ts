@@ -5,6 +5,7 @@ export type GridKeyboardShortcut =
   | "copy"
   | "cut"
   | "paste"
+  | "select_all"
   | "bold"
   | "italic"
   | "underline";
@@ -42,6 +43,10 @@ export function resolveGridKeyboardShortcut(input: {
     return "paste";
   }
 
+  if (key === "a") {
+    return "select_all";
+  }
+
   if (key === "b") {
     return "bold";
   }
@@ -70,4 +75,17 @@ export function isGridEditableTarget(target: EventTarget | null): boolean {
 
   const tag = "tagName" in element ? element.tagName : "";
   return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+}
+
+export function isGridFocusTarget(target: EventTarget | null): boolean {
+  if (!target || typeof target !== "object") {
+    return false;
+  }
+
+  const element = target as HTMLElement;
+  return Boolean(
+    element.closest('[role="grid"]') ||
+      element.closest('[role="gridcell"]') ||
+      element.closest('[role="rowheader"]'),
+  );
 }

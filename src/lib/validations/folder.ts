@@ -10,5 +10,11 @@ export const deleteFolderSchema = z.object({
   folderId: z.string().uuid(),
 });
 
+export const moveFolderSchema = z.object({
+  folderId: z.string().uuid(),
+  targetParentFolderId: z.string().uuid().nullable(),
+});
+
 export type CreateFolderInput = z.infer<typeof createFolderSchema>;
 export type DeleteFolderInput = z.infer<typeof deleteFolderSchema>;
+export type MoveFolderInput = z.infer<typeof moveFolderSchema>;

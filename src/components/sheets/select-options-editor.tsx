@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { AppSelect } from "@/components/ui/app-select";
 
 const COLOR_PRESETS = ["gray", "blue", "green", "red", "yellow", "purple", "orange", "pink", "teal"];
 
@@ -100,17 +101,16 @@ export function SelectOptionsEditor({
                   className="h-8 flex-1"
                   onChange={(event) => updateOption(index, { label: event.target.value })}
                 />
-                <select
+                <AppSelect
+                  size="sm"
+                  triggerClassName="w-24 capitalize"
                   value={option.color ?? "gray"}
-                  className="h-8 rounded-md border border-input bg-background px-2 text-xs"
-                  onChange={(event) => updateOption(index, { color: event.target.value })}
-                >
-                  {COLOR_PRESETS.map((color) => (
-                    <option key={color} value={color}>
-                      {color}
-                    </option>
-                  ))}
-                </select>
+                  options={COLOR_PRESETS.map((color) => ({
+                    value: color,
+                    label: color,
+                  }))}
+                  onValueChange={(color) => updateOption(index, { color })}
+                />
                 <div className="flex shrink-0">
                   <Button
                     type="button"

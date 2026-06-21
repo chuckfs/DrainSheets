@@ -8,6 +8,15 @@ function isPrintableKey(key: string): boolean {
   return key.length === 1 && !key.match(/[\x00-\x1F]/);
 }
 
+function clearBrowserTextSelection() {
+  window.getSelection()?.removeAllRanges();
+}
+
+function focusActiveGridCell() {
+  const activeCell = document.querySelector<HTMLElement>('[role="gridcell"][tabindex="0"]');
+  activeCell?.focus({ preventScroll: false });
+}
+
 export function useSheetKeyboard(
   grid: SheetGridController,
   clipboardHandler: (event: KeyboardEvent) => void,
@@ -16,11 +25,21 @@ export function useSheetKeyboard(
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (grid.readOnly) {
+      if (isGridEditableTarget(event.target)) {
         return;
       }
 
-      if (isGridEditableTarget(event.target)) {
+      const shortcut = resolveGridKeyboardShortcut(event);
+      if (shortcut === "select_all") {
+        event.preventDefault();
+        event.stopPropagation();
+        clearBrowserTextSelection();
+        grid.selectAll();
+        focusActiveGridCell();
+        return;
+      }
+
+      if (grid.readOnly) {
         return;
       }
 
@@ -56,7 +75,6 @@ export function useSheetKeyboard(
         return;
       }
 
-      const shortcut = resolveGridKeyboardShortcut(event);
       if (!shortcut) {
         return;
       }
@@ -100,7 +118,29 @@ export function useSheetKeyboard(
       clipboardHandler(event);
     }
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    function handleSelectStart(event: Event) {
+      if (!grid.selectionRange) {
+        return;
+      }
+
+      const { minRow, maxRow, minCol, maxCol } = grid.normalizedSelection;
+      const spansMultipleCells = minRow !== maxRow || minCol !== maxCol;
+      if (!spansMultipleCells) {
+        return;
+      }
+
+      if (isGridEditableTarget(event.target)) {
+        return;
+      }
+
+      event.preventDefault();
+    }
+
+    window.addEventListener("keydown", handleKeyDown, true);
+    document.addEventListener("selectstart", handleSelectStart);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown, true);
+      document.removeEventListener("selectstart", handleSelectStart);
+    };
   }, [clipboardHandler, grid]);
 }

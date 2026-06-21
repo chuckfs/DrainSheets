@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AppSelect } from "@/components/ui/app-select";
 import { ImportErrorBoundary } from "@/components/errors/error-boundaries";
 import { ImportMapper } from "./import-mapper";
 import { ImportPreviewPanel } from "./import-preview";
@@ -313,19 +314,19 @@ export function ImportDialog({
             {mode === "template" && (
               <div className="space-y-1.5">
                 <Label htmlFor="import-template">Template</Label>
-                <select
+                <AppSelect
                   id="import-template"
                   value={selectedTemplateId}
-                  className="flex h-9 w-full rounded-lg border border-input bg-background px-2 text-sm"
-                  onChange={(event) => handleTemplateChange(event.target.value)}
-                >
-                  <option value="">Select template…</option>
-                  {templates.map((template) => (
-                    <option key={template.id} value={template.id}>
-                      {template.name}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Select template…"
+                  options={[
+                    { value: "", label: "Select template…" },
+                    ...templates.map((template) => ({
+                      value: template.id,
+                      label: template.name,
+                    })),
+                  ]}
+                  onValueChange={handleTemplateChange}
+                />
               </div>
             )}
 
@@ -350,19 +351,18 @@ export function ImportDialog({
               {skipDuplicates && (
                 <div className="space-y-1.5">
                   <Label htmlFor="dedupe-column">Dedupe column</Label>
-                  <select
+                  <AppSelect
                     id="dedupe-column"
                     value={dedupeColumn}
-                    className="flex h-9 w-full rounded-lg border border-input bg-background px-2 text-sm"
-                    onChange={(event) => setDedupeColumn(event.target.value)}
-                  >
-                    <option value="">Primary / first column</option>
-                    {targetOptions.map((option) => (
-                      <option key={option.key} value={option.key}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                    options={[
+                      { value: "", label: "Primary / first column" },
+                      ...targetOptions.map((option) => ({
+                        value: option.key,
+                        label: option.label,
+                      })),
+                    ]}
+                    onValueChange={setDedupeColumn}
+                  />
                 </div>
               )}
             </div>

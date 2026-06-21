@@ -3,7 +3,8 @@
 import type { ReactNode } from "react";
 import { ChevronLeftIcon, ChevronRightIcon, LayoutGridIcon } from "lucide-react";
 import { GridToolbar } from "@/components/layout/grid-toolbar";
-import { useListSearchParams, compactSelectClassName } from "@/hooks/use-list-search-params";
+import { useListSearchParams } from "@/hooks/use-list-search-params";
+import { AppSelect } from "@/components/ui/app-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -44,25 +45,21 @@ export function ListGridToolbar({
             Grid
           </span>
           {filters}
-          <select
+          <AppSelect
             id="sort"
             aria-label="Sort by"
+            size="sm"
+            triggerClassName="w-auto min-w-[7rem]"
             defaultValue={searchParams.get("sort") ?? defaultSort}
-            className={compactSelectClassName}
-            onChange={(e) => {
+            options={sortOptions}
+            onValueChange={(next) => {
               if (onSortChange) {
-                onSortChange(e.target.value);
+                onSortChange(next);
               } else {
-                updateParams({ sort: e.target.value, page: null });
+                updateParams({ sort: next, page: null });
               }
             }}
-          >
-            {sortOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+          />
         </>
       }
       center={

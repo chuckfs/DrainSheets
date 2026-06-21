@@ -22,5 +22,3 @@ export function useListSearchParams() {
   return { searchParams, updateParams };
 }
 
-export const compactSelectClassName =
-  "h-7 rounded-md border border-input bg-background px-2 text-xs";

@@ -2,6 +2,7 @@
 
 import type { ColumnType } from "@/types/domain";
 import type { ColumnMappingEntry, InferredColumn } from "@/lib/import/types";
+import { AppSelect } from "@/components/ui/app-select";
 import { Label } from "@/components/ui/label";
 
 const COLUMN_TYPES: ColumnType[] = [
@@ -63,41 +64,34 @@ export function ImportMapper({
                 {header}
               </div>
               <span className="text-muted-foreground">→</span>
-              <select
+              <AppSelect
+                size="sm"
                 value={entry.targetKey ?? ""}
-                className="h-8 rounded-md border border-input bg-background px-2 text-xs"
-                onChange={(event) =>
+                options={[
+                  { value: "", label: "Ignore" },
+                  ...targetOptions.map((option) => ({
+                    value: option.key,
+                    label: option.label,
+                  })),
+                ]}
+                onValueChange={(targetKey) =>
                   updateEntry(header, {
-                    targetKey: event.target.value || null,
+                    targetKey: targetKey || null,
                     typeOverride:
-                      mode === "freeform"
-                        ? inferred?.type
-                        : selectedTarget?.type,
+                      mode === "freeform" ? inferred?.type : selectedTarget?.type,
                   })
                 }
-              >
-                <option value="">Ignore</option>
-                {targetOptions.map((option) => (
-                  <option key={option.key} value={option.key}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+              />
               {mode === "freeform" ? (
-                <select
+                <AppSelect
+                  size="sm"
                   value={entry.typeOverride ?? inferred?.type ?? "text"}
-                  className="h-8 rounded-md border border-input bg-background px-2 text-xs"
-                  onChange={(event) =>
-                    updateEntry(header, { typeOverride: event.target.value as ColumnType })
-                  }
                   disabled={!entry.targetKey}
-                >
-                  {COLUMN_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
+                  options={COLUMN_TYPES.map((type) => ({ value: type, label: type }))}
+                  onValueChange={(typeOverride) =>
+                    updateEntry(header, { typeOverride: typeOverride as ColumnType })
+                  }
+                />
               ) : (
                 <span className="text-xs text-muted-foreground">
                   {selectedTarget?.type ?? "—"}

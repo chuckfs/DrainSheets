@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { AppSelect } from "@/components/ui/app-select";
 import { UserPicker } from "./user-picker";
 import { ShareLinkSection } from "./share-link-section";
 import { toast } from "sonner";
@@ -155,18 +156,15 @@ export function ShareDialog({
                 <Label htmlFor="share-role" className="text-xs">
                   Access role
                 </Label>
-                <select
+                <AppSelect
                   id="share-role"
                   value={selectedRole}
-                  className="flex h-8 w-full rounded-lg border border-input bg-background px-2 text-sm"
-                  onChange={(event) => setSelectedRole(event.target.value as AccessRole)}
-                >
-                  {grantableShareRoles().map((role) => (
-                    <option key={role} value={role}>
-                      {accessRoleLabel(role)}
-                    </option>
-                  ))}
-                </select>
+                  options={grantableShareRoles().map((role) => ({
+                    value: role,
+                    label: accessRoleLabel(role),
+                  }))}
+                  onValueChange={(role) => setSelectedRole(role as AccessRole)}
+                />
               </div>
               <Button
                 type="button"
@@ -200,20 +198,17 @@ export function ShareDialog({
                       </div>
                       <div className="text-[11px] text-muted-foreground">{share.accessLabel}</div>
                     </div>
-                    <select
+                    <AppSelect
+                      size="sm"
+                      triggerClassName="h-8 w-auto"
                       value={share.role}
-                      className="h-8 rounded-md border border-input bg-background px-2 text-xs"
                       disabled={isPending}
-                      onChange={(event) =>
-                        handleRoleChange(share.id, event.target.value as AccessRole)
-                      }
-                    >
-                      {grantableShareRoles().map((role) => (
-                        <option key={role} value={role}>
-                          {accessRoleLabel(role)}
-                        </option>
-                      ))}
-                    </select>
+                      options={grantableShareRoles().map((role) => ({
+                        value: role,
+                        label: accessRoleLabel(role),
+                      }))}
+                      onValueChange={(role) => handleRoleChange(share.id, role as AccessRole)}
+                    />
                     <Button
                       type="button"
                       variant="ghost"

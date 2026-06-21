@@ -10,9 +10,14 @@ import type { SheetGridController } from "./use-sheet-grid";
 export function RowNumberHeaderCell({ grid }: { grid: SheetGridController }) {
   if (grid.readOnly) {
     return (
-      <span className="block w-full text-center text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        #
-      </span>
+      <button
+        type="button"
+        className="flex h-full w-full cursor-default items-center justify-center outline-none hover:bg-muted/60"
+        aria-label="Select all"
+        onClick={() => grid.selectAll()}
+      >
+        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">#</span>
+      </button>
     );
   }
 
@@ -20,15 +25,26 @@ export function RowNumberHeaderCell({ grid }: { grid: SheetGridController }) {
     <GridContextMenu
       items={[
         {
+          id: "select-all",
+          label: "Select all",
+          onSelect: () => grid.selectAll(),
+        },
+        {
           id: "add-row",
           label: "Add row",
           onSelect: () => void grid.addRow(),
+          separatorBefore: true,
         },
       ]}
     >
-      <div className="flex h-full w-full items-center justify-center">
+      <button
+        type="button"
+        className="flex h-full w-full cursor-default items-center justify-center outline-none hover:bg-muted/60"
+        aria-label="Select all"
+        onClick={() => grid.selectAll()}
+      >
         <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">#</span>
-      </div>
+      </button>
     </GridContextMenu>
   );
 }

@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AppSelect } from "@/components/ui/app-select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -243,14 +244,16 @@ export function SendUpdateDialog({
             </label>
             <div className="flex items-center gap-2 text-sm">
               <span className="text-muted-foreground">Layout</span>
-              <select
+              <AppSelect
+                size="sm"
+                triggerClassName="w-auto"
                 value={layout}
-                className="h-8 rounded-md border border-input bg-background px-2 text-sm"
-                onChange={(event) => setLayout(event.target.value as EmailLayout)}
-              >
-                <option value="stacked">Stacked</option>
-                <option value="table">Table</option>
-              </select>
+                options={[
+                  { value: "stacked", label: "Stacked" },
+                  { value: "table", label: "Table" },
+                ]}
+                onValueChange={(next) => setLayout(next as EmailLayout)}
+              />
             </div>
           </div>
 

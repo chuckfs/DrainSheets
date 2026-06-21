@@ -18,6 +18,12 @@ export const deleteSheetSchema = z.object({
   sheetId: z.string().uuid(),
 });
 
+export const moveSheetSchema = z.object({
+  sheetId: z.string().uuid(),
+  targetFolderId: z.string().uuid().nullable(),
+});
+
 export type CreateSheetInput = z.infer<typeof createSheetSchema>;
 export type UpdateSheetInput = z.infer<typeof updateSheetSchema>;
 export type DeleteSheetInput = z.infer<typeof deleteSheetSchema>;
+export type MoveSheetInput = z.infer<typeof moveSheetSchema>;

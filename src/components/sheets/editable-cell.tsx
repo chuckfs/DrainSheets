@@ -75,6 +75,14 @@ function EditableCellComponent({
       return;
     }
 
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "a") {
+      event.preventDefault();
+      event.stopPropagation();
+      window.getSelection()?.removeAllRanges();
+      grid.selectAll();
+      return;
+    }
+
     const extend = event.shiftKey;
 
     if (event.key === "Enter" || event.key === "F2") {
