@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { useTheme } from "next-themes";
 import {
   AlignCenterIcon,
   AlignLeftIcon,
@@ -40,6 +41,7 @@ import { downloadBase64File } from "@/lib/download";
 import {
   FILL_COLOR_PRESETS,
   TEXT_COLOR_PRESETS,
+  fillPresetStorageValue,
 } from "@/lib/sheets/cell-style";
 import type { RowFilterCondition } from "@/lib/sheets/row-view";
 import { cn } from "@/lib/utils";
@@ -48,7 +50,6 @@ import type { SheetClipboardController } from "./use-sheet-clipboard";
 import { SheetDecimalControls } from "./sheet-decimal-controls";
 import { SheetFreezeMenu } from "./sheet-freeze-menu";
 import { SheetSyncIndicator } from "./sheet-sync-indicator";
-import { SheetTypeSwitcher } from "./sheet-type-switcher";
 import { SheetViewPicker, type SheetViewState } from "./sheet-view-picker";
 import type { SheetGridController } from "./use-sheet-grid";
 
@@ -65,6 +66,8 @@ function toggleVariant(state: boolean | "mixed", active = true): "default" | "ou
 }
 
 function SheetFormatControls({ grid }: { grid: SheetGridController }) {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
   const state = grid.getFormattingState();
   const hasSelection = Boolean(grid.selectionRange || grid.selectedCell);
 
@@ -197,12 +200,14 @@ function SheetFormatControls({ grid }: { grid: SheetGridController }) {
               <DropdownMenuItem
                 key={preset.label}
                 onClick={() =>
-                  void grid.applyFormattingPatch({ backgroundColor: preset.value ?? undefined })
+                  void grid.applyFormattingPatch({
+                    backgroundColor: preset.id ? fillPresetStorageValue(preset.id) : undefined,
+                  })
                 }
               >
                 <span
                   className="size-3 rounded-sm border border-border"
-                  style={{ backgroundColor: preset.value ?? "transparent" }}
+                  style={{ backgroundColor: (isDark ? preset.dark : preset.light) ?? "transparent" }}
                 />
                 {preset.label}
               </DropdownMenuItem>
@@ -346,7 +351,6 @@ export function SheetRibbonToolbar({
       }
       center={
         <>
-          <SheetTypeSwitcher grid={grid} column={activeColumn} />
           <SheetDecimalControls grid={grid} column={activeColumn} />
           {onToggleFilter ? (
             <Button

@@ -28,6 +28,18 @@ export const createSheetFromTemplateSchema = z.object({
   version: z.number().int().positive().optional(),
 });
 
+export const saveSheetAsTemplateSchema = z.object({
+  sheetId: z.string().uuid(),
+  name: z.string().min(1, "Name is required").max(200),
+  description: z.string().max(2000).optional(),
+});
+
+export const deleteUserTemplateSchema = z.object({
+  templateId: z.string().uuid(),
+});
+
 export type TemplateColumnDefinition = z.infer<typeof templateColumnSchema>;
 export type CreateBlankSheetInput = z.infer<typeof createBlankSheetSchema>;
 export type CreateSheetFromTemplateInput = z.infer<typeof createSheetFromTemplateSchema>;
+export type SaveSheetAsTemplateInput = z.infer<typeof saveSheetAsTemplateSchema>;
+export type DeleteUserTemplateInput = z.infer<typeof deleteUserTemplateSchema>;

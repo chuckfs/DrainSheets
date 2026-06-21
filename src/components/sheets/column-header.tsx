@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { ColumnResizeHandle } from "./column-resize-handle";
 import { SelectOptionsEditor } from "./select-options-editor";
 import { DeleteColumnDialog } from "./delete-column-dialog";
+import { ColumnTypeChangeDialog } from "./column-type-change-dialog";
 import { GridContextMenu } from "./grid-context-menu";
 import type { SheetGridController } from "./use-sheet-grid";
 
@@ -29,6 +30,7 @@ export function ColumnHeader({
   const [draftLabel, setDraftLabel] = useState(column.label);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [typeDialogOpen, setTypeDialogOpen] = useState(false);
   const [isMoving, startMove] = useTransition();
   const widthRef = useRef(layout.widthPx);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -104,11 +106,17 @@ export function ColumnHeader({
             disabled: isReadOnly,
           },
           {
+            id: "type",
+            label: "Change column type…",
+            onSelect: () => setTypeDialogOpen(true),
+            disabled: isReadOnly,
+            separatorBefore: true,
+          },
+          {
             id: "hide",
             label: "Hide column",
             onSelect: () => void grid.hideColumnById(column.id),
             disabled: isReadOnly,
-            separatorBefore: true,
           },
           {
             id: "unhide-all",
@@ -264,6 +272,15 @@ export function ColumnHeader({
           column={column}
           open={deleteOpen}
           onOpenChange={setDeleteOpen}
+          grid={grid}
+        />
+      )}
+
+      {!isReadOnly && (
+        <ColumnTypeChangeDialog
+          open={typeDialogOpen}
+          onOpenChange={setTypeDialogOpen}
+          column={column}
           grid={grid}
         />
       )}

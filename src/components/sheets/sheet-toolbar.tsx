@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { ColumnsIcon, RowsIcon, Share2Icon } from "lucide-react";
+import { ColumnsIcon, LayoutTemplateIcon, RowsIcon, Share2Icon } from "lucide-react";
 import type { AccessContext } from "@/lib/access/effective-role";
 import type { Sheet } from "@/types/domain";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { AccessBadge } from "@/components/shares/access-badge";
 import { ShareDialog } from "@/components/shares/share-dialog";
 import type { SheetTemplateProvenance } from "@/actions/templates";
 import { SheetTemplateProvenance as SheetTemplateProvenanceBadge } from "@/components/sheets/sheet-template-provenance";
+import { SaveAsTemplateDialog } from "@/components/sheets/save-as-template-dialog";
 import type { SheetGridController } from "./use-sheet-grid";
 
 export function SheetToolbar({
@@ -26,6 +27,7 @@ export function SheetToolbar({
   collaborationToggle?: ReactNode;
 }) {
   const [shareOpen, setShareOpen] = useState(false);
+  const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
 
   return (
     <>
@@ -55,6 +57,18 @@ export function SheetToolbar({
         actions={
           <div className="flex items-center gap-1.5">
             {collaborationToggle}
+            {access.canEdit && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 gap-1 text-xs"
+                onClick={() => setSaveTemplateOpen(true)}
+              >
+                <LayoutTemplateIcon className="size-3.5" />
+                Save as template
+              </Button>
+            )}
             {access.canShare && (
               <Button
                 type="button"
@@ -78,6 +92,13 @@ export function SheetToolbar({
         resourceType="sheet"
         resourceId={sheet.id}
         resourceName={sheet.name}
+      />
+
+      <SaveAsTemplateDialog
+        open={saveTemplateOpen}
+        onOpenChange={setSaveTemplateOpen}
+        sheetId={sheet.id}
+        defaultName={sheet.name}
       />
     </>
   );

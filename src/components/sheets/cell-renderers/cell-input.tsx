@@ -18,6 +18,9 @@ type CellInputProps = {
   onNavigate?: (direction: NavigateDirection) => void;
 };
 
+const cellEditorClassName =
+  "h-full min-h-[calc(theme(spacing.7)-2px)] w-full rounded-none border-0 bg-transparent px-2 py-1 text-[13px] shadow-none outline-none focus-visible:border-0 focus-visible:ring-0 focus-visible:outline-none dark:bg-transparent disabled:bg-transparent";
+
 export function CellInput({
   value,
   type = "text",
@@ -80,10 +83,7 @@ export function CellInput({
         defaultValue={value}
         rows={2}
         disabled={isSaving}
-        className={cn(
-          "min-h-7 resize-none border-0 bg-transparent px-1 py-0.5 text-[13px] shadow-none focus-visible:ring-1",
-          className,
-        )}
+        className={cn(cellEditorClassName, "resize-none", className)}
         onKeyDown={handleKeyDown}
         onBlur={handleBlur}
       />
@@ -96,10 +96,7 @@ export function CellInput({
       type={type}
       defaultValue={value}
       disabled={isSaving}
-      className={cn(
-        "h-7 border-0 bg-transparent px-1 shadow-none focus-visible:ring-1",
-        className,
-      )}
+      className={cn(cellEditorClassName, className)}
       onKeyDown={handleKeyDown}
       onBlur={handleBlur}
     />

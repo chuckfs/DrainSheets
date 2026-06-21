@@ -72,7 +72,7 @@ export function SelectRenderer({
       ref={ref}
       defaultValue={current}
       disabled={isSaving}
-      className="h-7 w-full min-w-0 rounded border-0 bg-transparent px-1 text-[13px] outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+      className="h-full min-h-[calc(theme(spacing.7)-2px)] w-full min-w-0 rounded-none border-0 bg-transparent px-2 py-1 text-[13px] outline-none focus:ring-0 disabled:opacity-50"
       onKeyDown={handleKeyDown}
       onBlur={(event) => onCommit(event.currentTarget.value || null)}
       onChange={(event) => onCommit(event.currentTarget.value || null)}

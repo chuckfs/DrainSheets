@@ -3,6 +3,7 @@
 import { memo } from "react";
 import { GripVerticalIcon, MoreHorizontalIcon } from "lucide-react";
 import { useState } from "react";
+import { useTheme } from "next-themes";
 import { getCellRenderer } from "@/components/sheets/cell-renderers/cell-renderer-factory";
 import type { Json } from "@/types/database";
 import type { SheetColumn } from "@/types/domain";
@@ -51,6 +52,8 @@ function EditableCellComponent({
   cellStyle,
 }: EditableCellProps) {
   const clipboard = useSheetClipboardActions();
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
   const coord: CellCoord = { rowIndex, colIndex };
   const Renderer = getCellRenderer(column.type);
   const mode = isEditing || column.type === "checkbox" ? "edit" : "display";
@@ -167,13 +170,14 @@ function EditableCellComponent({
         data-row-index={rowIndex}
         data-col-index={colIndex}
         className={cn(
-          "relative h-full min-h-7 px-2 py-1 outline-none",
+          "relative h-full min-h-7 outline-none",
+          isEditing ? "p-0" : "px-2 py-1",
           cellStyleClassName(cellStyle),
           isSelected && "bg-primary/8",
           isActive && "z-10 ring-2 ring-inset ring-primary",
           isSaving && "bg-muted/40",
         )}
-        style={cellStyleInline(cellStyle)}
+        style={cellStyleInline(cellStyle, { isDark })}
         onPointerDown={(event) => {
           if (event.button !== 0) {
             return;

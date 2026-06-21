@@ -3,8 +3,10 @@ import {
   getCellStyleFromRow,
   mergeCellStyle,
   parseRowStyles,
+  resolveFillColor,
   setCellStyleOnRow,
   styleToHistoryJson,
+  fillPresetStorageValue,
 } from "@/lib/sheets/cell-style";
 import type { Row } from "@/types/domain";
 
@@ -58,5 +60,16 @@ describe("cell-style", () => {
   it("serializes styles for history", () => {
     expect(styleToHistoryJson({ bold: true })).toEqual({ bold: true });
     expect(styleToHistoryJson({})).toBeNull();
+  });
+
+  it("resolves fill presets for light and dark themes", () => {
+    const stored = fillPresetStorageValue("green");
+    expect(resolveFillColor(stored, false)).toBe("#dcfce7");
+    expect(resolveFillColor(stored, true)).toBe("#14532d");
+  });
+
+  it("maps legacy light fill hex values to dark theme colors", () => {
+    expect(resolveFillColor("#dcfce7", true)).toBe("#14532d");
+    expect(resolveFillColor("#fef9c3", true)).toBe("#422006");
   });
 });

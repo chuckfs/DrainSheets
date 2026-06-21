@@ -115,3 +115,14 @@ export function templateColumnPreview(columns: TemplateColumnDefinition[]): stri
 export function isBlankTemplateKey(key: string): boolean {
   return key === "blank";
 }
+
+export function buildUserTemplateKey(name: string): string {
+  const slug = name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 48);
+
+  return `user_${slug || "template"}_${Date.now()}`;
+}

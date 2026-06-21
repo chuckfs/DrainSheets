@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-result";
 import { logActivityEvent } from "@/lib/activity/log-event";
 import { requireProfile } from "@/lib/auth/guards";
+import { getSheetAccessContext } from "@/actions/access";
 import {
+  buildUserTemplateKey,
   parseTemplateColumns,
   parseTemplateSeedRows,
 } from "@/lib/templates/template-utils";
@@ -13,6 +15,8 @@ import { createClient } from "@/lib/supabase/server";
 import {
   createBlankSheetSchema,
   createSheetFromTemplateSchema,
+  deleteUserTemplateSchema,
+  saveSheetAsTemplateSchema,
   type TemplateColumnDefinition,
 } from "@/lib/validations/template";
 import type { Json } from "@/types/database";
@@ -302,4 +306,126 @@ export async function getSheetTemplateProvenance(sheet: Sheet): Promise<SheetTem
     name: template?.name ?? "Unknown template",
     version: sheet.template_version ?? template?.current_version ?? 1,
   };
+}
+
+export async function saveSheetAsTemplate(input: {
+  sheetId: string;
+  name: string;
+  description?: string;
+}): Promise<ActionResult<{ templateId: string }>> {
+  const parsed = saveSheetAsTemplateSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "Invalid template");
+  }
+
+  const access = await getSheetAccessContext(parsed.data.sheetId);
+  if (!access.canEdit) {
+    return actionError("You do not have permission to save this sheet as a template");
+  }
+
+  const profile = await requireProfile();
+  const supabase = await createClient();
+
+  const { data: columns, error: columnsError } = await supabase
+    .from("sheet_columns")
+    .select("key, label, type, position, is_primary, is_pinned, width, config")
+    .eq("sheet_id", parsed.data.sheetId)
+    .order("position", { ascending: true });
+
+  if (columnsError) {
+    return actionError(columnsError.message);
+  }
+
+  if (!columns || columns.length === 0) {
+    return actionError("Add at least one column before saving as a template");
+  }
+
+  const templateColumns: TemplateColumnDefinition[] = columns.map((column) => ({
+    key: column.key,
+    label: column.label,
+    type: column.type,
+    position: column.position,
+    is_primary: column.is_primary,
+    is_pinned: column.is_pinned,
+    width: column.width,
+    config: (column.config ?? {}) as Record<string, unknown>,
+  }));
+
+  const { data: template, error: templateError } = await supabase
+    .from("sheet_templates")
+    .insert({
+      org_id: profile.org_id,
+      scope: "user",
+      key: buildUserTemplateKey(parsed.data.name),
+      name: parsed.data.name.trim(),
+      description: parsed.data.description?.trim() || null,
+      created_by: profile.id,
+      current_version: 1,
+    })
+    .select("id")
+    .single();
+
+  if (templateError) {
+    return actionError(templateError.message);
+  }
+
+  const { error: versionError } = await supabase.from("sheet_template_versions").insert({
+    template_id: template.id,
+    version: 1,
+    columns: templateColumns as Json,
+    seed_rows: null,
+  });
+
+  if (versionError) {
+    await supabase.from("sheet_templates").delete().eq("id", template.id);
+    return actionError(versionError.message);
+  }
+
+  revalidatePath("/");
+  revalidatePath(`/sheets/${parsed.data.sheetId}`);
+
+  return actionSuccess({ templateId: template.id });
+}
+
+export async function deleteUserTemplate(templateId: string): Promise<ActionResult> {
+  const parsed = deleteUserTemplateSchema.safeParse({ templateId });
+
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "Invalid template");
+  }
+
+  const supabase = await createClient();
+  const { data: existing, error: fetchError } = await supabase
+    .from("sheet_templates")
+    .select("id, scope, created_by")
+    .eq("id", parsed.data.templateId)
+    .maybeSingle();
+
+  if (fetchError) {
+    return actionError(fetchError.message);
+  }
+
+  if (!existing) {
+    return actionError("Template not found");
+  }
+
+  if (existing.scope !== "user") {
+    return actionError("Only your saved templates can be deleted");
+  }
+
+  const profile = await requireProfile();
+  if (existing.created_by !== profile.id) {
+    return actionError("You do not have permission to delete this template");
+  }
+
+  const { error } = await supabase.from("sheet_templates").delete().eq("id", existing.id);
+
+  if (error) {
+    return actionError(error.message);
+  }
+
+  revalidatePath("/");
+
+  return actionSuccess(undefined);
 }

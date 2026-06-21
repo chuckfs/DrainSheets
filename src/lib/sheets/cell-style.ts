@@ -14,7 +14,10 @@ export type CellStyle = {
 
 export type RowStylesMap = Record<string, CellStyle>;
 
+export type FillColorPresetId = "yellow" | "blue" | "green" | "gray";
+
 const HEX_COLOR = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+const FILL_PRESET_PREFIX = "preset:";
 
 export const TEXT_COLOR_PRESETS = [
   { label: "Default", value: null },
@@ -24,13 +27,68 @@ export const TEXT_COLOR_PRESETS = [
   { label: "Green", value: "#16a34a" },
 ] as const;
 
-export const FILL_COLOR_PRESETS = [
-  { label: "None", value: null },
-  { label: "Yellow", value: "#fef9c3" },
-  { label: "Blue", value: "#dbeafe" },
-  { label: "Green", value: "#dcfce7" },
-  { label: "Gray", value: "#f3f4f6" },
-] as const;
+export const FILL_COLOR_PRESETS: Array<{
+  label: string;
+  id: FillColorPresetId | null;
+  light: string | null;
+  dark: string | null;
+}> = [
+  { label: "None", id: null, light: null, dark: null },
+  { label: "Yellow", id: "yellow", light: "#fef9c3", dark: "#422006" },
+  { label: "Blue", id: "blue", light: "#dbeafe", dark: "#1e3a5f" },
+  { label: "Green", id: "green", light: "#dcfce7", dark: "#14532d" },
+  { label: "Gray", id: "gray", light: "#f3f4f6", dark: "#374151" },
+];
+
+const LEGACY_FILL_HEX_TO_PRESET: Record<string, FillColorPresetId> = {
+  "#fef9c3": "yellow",
+  "#dbeafe": "blue",
+  "#dcfce7": "green",
+  "#f3f4f6": "gray",
+};
+
+export function fillPresetStorageValue(id: FillColorPresetId): string {
+  return `${FILL_PRESET_PREFIX}${id}`;
+}
+
+export function isFillPresetValue(value: string): boolean {
+  return value.startsWith(FILL_PRESET_PREFIX);
+}
+
+export function parseFillPresetId(value: string | undefined): FillColorPresetId | null {
+  if (!value) {
+    return null;
+  }
+
+  if (isFillPresetValue(value)) {
+    const id = value.slice(FILL_PRESET_PREFIX.length) as FillColorPresetId;
+    return FILL_COLOR_PRESETS.some((preset) => preset.id === id) ? id : null;
+  }
+
+  return LEGACY_FILL_HEX_TO_PRESET[value.toLowerCase()] ?? null;
+}
+
+export function resolveFillColor(value: string | undefined, isDark: boolean): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const presetId = parseFillPresetId(value);
+  if (presetId) {
+    const preset = FILL_COLOR_PRESETS.find((entry) => entry.id === presetId);
+    if (!preset) {
+      return undefined;
+    }
+
+    return isDark ? preset.dark ?? undefined : preset.light ?? undefined;
+  }
+
+  if (HEX_COLOR.test(value)) {
+    return value;
+  }
+
+  return undefined;
+}
 
 export function parseRowStyles(styles: Json | undefined): RowStylesMap {
   if (!styles || typeof styles !== "object" || Array.isArray(styles)) {
@@ -62,8 +120,10 @@ export function normalizeCellStyle(raw: Record<string, unknown>): CellStyle {
     style.color = raw.color;
   }
 
-  if (typeof raw.backgroundColor === "string" && HEX_COLOR.test(raw.backgroundColor)) {
-    style.backgroundColor = raw.backgroundColor;
+  if (typeof raw.backgroundColor === "string") {
+    if (isFillPresetValue(raw.backgroundColor) || HEX_COLOR.test(raw.backgroundColor)) {
+      style.backgroundColor = raw.backgroundColor;
+    }
   }
 
   return style;
@@ -126,10 +186,16 @@ export function cellStyleClassName(style: CellStyle | undefined): string {
   return classes.join(" ");
 }
 
-export function cellStyleInline(style: CellStyle | undefined): Record<string, string> {
+export function cellStyleInline(
+  style: CellStyle | undefined,
+  options?: { isDark?: boolean },
+): Record<string, string> {
   const inline: Record<string, string> = {};
   if (style?.color) inline.color = style.color;
-  if (style?.backgroundColor) inline.backgroundColor = style.backgroundColor;
+  if (style?.backgroundColor) {
+    inline.backgroundColor =
+      resolveFillColor(style.backgroundColor, options?.isDark ?? false) ?? style.backgroundColor;
+  }
   if (style?.align === "left") inline.textAlign = "left";
   if (style?.align === "center") inline.textAlign = "center";
   if (style?.align === "right") inline.textAlign = "right";

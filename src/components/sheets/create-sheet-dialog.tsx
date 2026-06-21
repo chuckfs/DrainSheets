@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createBlankSheet, createSheetFromTemplate, listTemplates } from "@/actions/templates";
 import { isBlankTemplateKey } from "@/lib/templates/template-utils";
@@ -20,6 +20,10 @@ import { toast } from "sonner";
 
 type CreateMode = "blank" | "template";
 
+function pickDefaultTemplateId(userTemplates: SheetTemplate[], systemTemplates: SheetTemplate[]): string | null {
+  return userTemplates[0]?.id ?? systemTemplates[0]?.id ?? null;
+}
+
 export function CreateSheetDialog({
   open,
   onOpenChange,
@@ -36,40 +40,40 @@ export function CreateSheetDialog({
   const router = useRouter();
   const [mode, setMode] = useState<CreateMode>("blank");
   const [name, setName] = useState("");
-  const [templates, setTemplates] = useState<SheetTemplate[]>([]);
+  const [userTemplates, setUserTemplates] = useState<SheetTemplate[]>([]);
+  const [systemTemplates, setSystemTemplates] = useState<SheetTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  const loadTemplates = useCallback(async () => {
+    setLoadingTemplates(true);
+    try {
+      const data = await listTemplates();
+      const user = data.filter((template) => template.scope === "user");
+      const system = data.filter((template) => template.scope === "system");
+      setUserTemplates(user);
+      setSystemTemplates(system);
+      setSelectedTemplateId((current) => {
+        if (current && data.some((template) => template.id === current)) {
+          return current;
+        }
+        return pickDefaultTemplateId(user, system);
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to load templates");
+    } finally {
+      setLoadingTemplates(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!open) {
       return;
     }
 
-    let cancelled = false;
-    setLoadingTemplates(true);
-
-    void listTemplates()
-      .then((data) => {
-        if (!cancelled) {
-          setTemplates(data.filter((template) => template.scope === "system"));
-          const defaultTemplate = data.find((template) => template.key === "tenant_prospect_list");
-          setSelectedTemplateId(defaultTemplate?.id ?? data[0]?.id ?? null);
-        }
-      })
-      .catch((error: Error) => {
-        toast.error(error.message);
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoadingTemplates(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [open]);
+    void loadTemplates();
+  }, [loadTemplates, open]);
 
   function reset() {
     setMode("blank");
@@ -86,6 +90,7 @@ export function CreateSheetDialog({
 
     startTransition(async () => {
       let result;
+      const allTemplates = [...userTemplates, ...systemTemplates];
 
       if (mode === "blank") {
         result = await createBlankSheet({
@@ -99,7 +104,7 @@ export function CreateSheetDialog({
           return;
         }
 
-        const template = templates.find((entry) => entry.id === selectedTemplateId);
+        const template = allTemplates.find((entry) => entry.id === selectedTemplateId);
 
         if (template && isBlankTemplateKey(template.key)) {
           result = await createBlankSheet({
@@ -135,6 +140,8 @@ export function CreateSheetDialog({
       router.refresh();
     });
   }
+
+  const hasTemplateOptions = userTemplates.length > 0 || systemTemplates.length > 0;
 
   return (
     <Dialog
@@ -181,17 +188,18 @@ export function CreateSheetDialog({
             </Button>
           </div>
 
-          {mode === "template" && (
-            loadingTemplates ? (
+          {mode === "template" &&
+            (loadingTemplates ? (
               <p className="text-sm text-muted-foreground">Loading templates…</p>
             ) : (
               <TemplatePicker
-                templates={templates}
+                userTemplates={userTemplates}
+                systemTemplates={systemTemplates}
                 selectedTemplateId={selectedTemplateId}
                 onSelect={setSelectedTemplateId}
+                onTemplatesChanged={() => void loadTemplates()}
               />
-            )
-          )}
+            ))}
 
           {mode === "blank" && (
             <p className="text-xs text-muted-foreground">
@@ -208,7 +216,7 @@ export function CreateSheetDialog({
               disabled={
                 isPending ||
                 !name.trim() ||
-                (mode === "template" && !selectedTemplateId)
+                (mode === "template" && (!selectedTemplateId || !hasTemplateOptions))
               }
             >
               Create sheet
