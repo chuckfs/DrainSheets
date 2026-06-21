@@ -5,7 +5,7 @@ import { actionError, actionSuccess, type ActionResult } from "@/lib/action-resu
 import { requireProfile } from "@/lib/auth/guards";
 import { canCreateWorkspace } from "@/lib/permissions/sheet";
 import { createClient } from "@/lib/supabase/server";
-import { createWorkspaceSchema } from "@/lib/validations/workspace";
+import { createWorkspaceSchema, deleteWorkspaceSchema } from "@/lib/validations/workspace";
 import type { Workspace } from "@/types/domain";
 
 export async function listWorkspaces(): Promise<Workspace[]> {
@@ -85,4 +85,52 @@ export async function createWorkspace(input: {
   revalidatePath(`/workspaces/${workspace.id}`);
 
   return actionSuccess(workspace);
+}
+
+export async function deleteWorkspace(workspaceId: string): Promise<ActionResult> {
+  await requireProfile();
+  const parsed = deleteWorkspaceSchema.safeParse({ workspaceId });
+
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "Invalid workspace");
+  }
+
+  const supabase = await createClient();
+  const { count, error: countError } = await supabase
+    .from("workspaces")
+    .select("id", { count: "exact", head: true });
+
+  if (countError) {
+    return actionError(countError.message);
+  }
+
+  if ((count ?? 0) <= 1) {
+    return actionError("You cannot delete your only workspace");
+  }
+
+  const { data: existing, error: fetchError } = await supabase
+    .from("workspaces")
+    .select("id, name")
+    .eq("id", parsed.data.workspaceId)
+    .maybeSingle();
+
+  if (fetchError) {
+    return actionError(fetchError.message);
+  }
+
+  if (!existing) {
+    return actionError("Workspace not found");
+  }
+
+  const { error } = await supabase.from("workspaces").delete().eq("id", existing.id);
+
+  if (error) {
+    return actionError(error.message);
+  }
+
+  revalidatePath("/");
+  revalidatePath("/browse");
+  revalidatePath(`/workspaces/${existing.id}`);
+
+  return actionSuccess(undefined);
 }

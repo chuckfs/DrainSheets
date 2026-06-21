@@ -14,5 +14,10 @@ export const updateSheetSchema = z.object({
   status: sheetStatusSchema.optional(),
 });
 
+export const deleteSheetSchema = z.object({
+  sheetId: z.string().uuid(),
+});
+
 export type CreateSheetInput = z.infer<typeof createSheetSchema>;
 export type UpdateSheetInput = z.infer<typeof updateSheetSchema>;
+export type DeleteSheetInput = z.infer<typeof deleteSheetSchema>;

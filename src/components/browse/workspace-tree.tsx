@@ -11,9 +11,13 @@ import {
   FolderPlusIcon,
   PlusIcon,
   Share2Icon,
+  Trash2Icon,
   UploadIcon,
 } from "lucide-react";
+import { deleteFolder } from "@/actions/folders";
+import { deleteSheet } from "@/actions/sheets";
 import type { AccessContext } from "@/lib/access/effective-role";
+import { countFolderSubtreeContents } from "@/lib/folders/subtree";
 import {
   buildWorkspaceTree,
   type WorkspaceTreeFolderNode,
@@ -27,11 +31,39 @@ import { CreateFolderDialog } from "@/components/workspaces/create-folder-dialog
 import { CreateSheetDialog } from "@/components/sheets/create-sheet-dialog";
 import { SheetFavoriteButton } from "@/components/sheets/sheet-favorite-button";
 import { ImportDialog } from "@/components/import/import-dialog";
+import { DeleteResourceDialog } from "@/components/workspaces/delete-resource-dialog";
+import { TreeItemOverflowMenu } from "@/components/workspaces/tree-item-overflow-menu";
+import { toast } from "sonner";
+
+function buildFolderDeleteDescription(
+  folderName: string,
+  subfolderCount: number,
+  sheetCount: number,
+): string {
+  const parts = [`Delete “${folderName}”?`];
+
+  if (subfolderCount === 0 && sheetCount === 0) {
+    parts.push("This folder is empty and will be permanently removed.");
+  } else {
+    const details: string[] = [];
+    if (subfolderCount > 0) {
+      details.push(`${subfolderCount} subfolder${subfolderCount === 1 ? "" : "s"}`);
+    }
+    if (sheetCount > 0) {
+      details.push(`${sheetCount} sheet${sheetCount === 1 ? "" : "s"}`);
+    }
+    parts.push(`This will permanently delete ${details.join(" and ")}.`);
+  }
+
+  parts.push("This cannot be undone.");
+  return parts.join(" ");
+}
 
 function FolderNode({
   node,
   workspaceId,
   folders,
+  sheets,
   access,
   activeSheetId,
   depth,
@@ -41,6 +73,7 @@ function FolderNode({
   node: WorkspaceTreeFolderNode;
   workspaceId: string;
   folders: Folder[];
+  sheets: Sheet[];
   access: AccessContext;
   activeSheetId?: string;
   depth: number;
@@ -52,7 +85,34 @@ function FolderNode({
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const hasChildren = node.folders.length > 0 || node.sheets.length > 0;
+
+  const folderHierarchy = useMemo(
+    () => folders.map((folder) => ({ id: folder.id, parent_folder_id: folder.parent_folder_id })),
+    [folders],
+  );
+  const { subfolderCount, sheetCount } = useMemo(
+    () =>
+      countFolderSubtreeContents(
+        node.folder.id,
+        folderHierarchy,
+        sheets.map((sheet) => sheet.folder_id),
+      ),
+    [folderHierarchy, node.folder.id, sheets],
+  );
+
+  async function handleDeleteFolder(): Promise<boolean> {
+    const result = await deleteFolder(node.folder.id);
+    if (!result.success) {
+      toast.error(result.error);
+      return false;
+    }
+
+    toast.success("Folder deleted");
+    onRefresh();
+    return true;
+  }
 
   return (
     <li>
@@ -113,16 +173,24 @@ function FolderNode({
           </div>
         )}
         {access.canShare && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="size-6 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
-            aria-label="Share folder"
-            onClick={() => setShareOpen(true)}
-          >
-            <Share2Icon className="size-3.5" />
-          </Button>
+          <TreeItemOverflowMenu
+            items={[
+              {
+                id: "share",
+                label: "Share folder",
+                icon: <Share2Icon className="size-3.5" />,
+                onSelect: () => setShareOpen(true),
+              },
+              {
+                id: "delete",
+                label: "Delete folder",
+                icon: <Trash2Icon className="size-3.5" />,
+                destructive: true,
+                separatorBefore: true,
+                onSelect: () => setDeleteOpen(true),
+              },
+            ]}
+          />
         )}
       </div>
 
@@ -132,9 +200,12 @@ function FolderNode({
             <SheetRow
               key={sheet.id}
               sheet={sheet}
+              workspaceId={workspaceId}
+              access={access}
               activeSheetId={activeSheetId}
               depth={depth + 1}
               favorited={favoriteSheetIds.has(sheet.id)}
+              onRefresh={onRefresh}
             />
           ))}
           {node.folders.map((child) => (
@@ -143,6 +214,7 @@ function FolderNode({
               node={child}
               workspaceId={workspaceId}
               folders={folders}
+              sheets={sheets}
               access={access}
               activeSheetId={activeSheetId}
               depth={depth + 1}
@@ -182,22 +254,55 @@ function FolderNode({
         folderId={node.folder.id}
         onImported={onRefresh}
       />
+      <DeleteResourceDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Delete folder"
+        description={buildFolderDeleteDescription(node.folder.name, subfolderCount, sheetCount)}
+        confirmLabel="Delete folder"
+        onConfirm={handleDeleteFolder}
+      />
     </li>
   );
 }
 
 function SheetRow({
   sheet,
+  workspaceId,
+  access,
   activeSheetId,
   depth,
   favorited,
+  onRefresh,
 }: {
   sheet: { id: string; name: string };
+  workspaceId: string;
+  access: AccessContext;
   activeSheetId?: string;
   depth: number;
   favorited?: boolean;
+  onRefresh: () => void;
 }) {
+  const router = useRouter();
   const active = sheet.id === activeSheetId;
+  const [shareOpen, setShareOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  async function handleDeleteSheet(): Promise<boolean> {
+    const result = await deleteSheet(sheet.id);
+    if (!result.success) {
+      toast.error(result.error);
+      return false;
+    }
+
+    toast.success("Sheet deleted");
+    if (active) {
+      router.push(`/workspaces/${workspaceId}`);
+    } else {
+      router.refresh();
+    }
+    return true;
+  }
 
   return (
     <li>
@@ -219,7 +324,43 @@ function SheetRow({
           <span className="truncate">{sheet.name}</span>
         </Link>
         <SheetFavoriteButton sheetId={sheet.id} initialFavorited={Boolean(favorited)} />
+        {access.canShare && (
+          <TreeItemOverflowMenu
+            items={[
+              {
+                id: "share",
+                label: "Share sheet",
+                icon: <Share2Icon className="size-3.5" />,
+                onSelect: () => setShareOpen(true),
+              },
+              {
+                id: "delete",
+                label: "Delete sheet",
+                icon: <Trash2Icon className="size-3.5" />,
+                destructive: true,
+                separatorBefore: true,
+                onSelect: () => setDeleteOpen(true),
+              },
+            ]}
+          />
+        )}
       </div>
+
+      <ShareDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        resourceType="sheet"
+        resourceId={sheet.id}
+        resourceName={sheet.name}
+      />
+      <DeleteResourceDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Delete sheet"
+        description={`Delete “${sheet.name}”? All rows, columns, and attachments will be permanently removed. This cannot be undone.`}
+        confirmLabel="Delete sheet"
+        onConfirm={handleDeleteSheet}
+      />
     </li>
   );
 }
@@ -298,6 +439,7 @@ export function WorkspaceTree({
             node={node}
             workspaceId={workspaceId}
             folders={folders}
+            sheets={sheets}
             access={access}
             activeSheetId={activeSheetId}
             depth={0}
@@ -309,9 +451,12 @@ export function WorkspaceTree({
           <SheetRow
             key={sheet.id}
             sheet={sheet}
+            workspaceId={workspaceId}
+            access={access}
             activeSheetId={activeSheetId}
             depth={0}
             favorited={favorites.has(sheet.id)}
+            onRefresh={handleRefresh}
           />
         ))}
       </ul>

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { FolderPlusIcon, PlusIcon, Share2Icon, UploadIcon } from "lucide-react";
+import { FolderPlusIcon, MoreHorizontalIcon, PlusIcon, Share2Icon, Trash2Icon, UploadIcon } from "lucide-react";
+import { deleteWorkspace } from "@/actions/workspaces";
 import type { AccessContext } from "@/lib/access/effective-role";
 import type { Folder, Workspace } from "@/types/domain";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,15 @@ import { CreateSheetDialog } from "@/components/sheets/create-sheet-dialog";
 import { CreateWorkspaceDialog } from "@/components/workspaces/create-workspace-dialog";
 import { ImportDialog } from "@/components/import/import-dialog";
 import { WorkspaceAvatar } from "@/components/workspaces/workspace-avatar";
+import { DeleteResourceDialog } from "@/components/workspaces/delete-resource-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 
 export function WorkspaceToolbar({
@@ -35,6 +45,20 @@ export function WorkspaceToolbar({
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [createWorkspaceOpen, setCreateWorkspaceOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  async function handleDeleteWorkspace(): Promise<boolean> {
+    const result = await deleteWorkspace(workspace.id);
+    if (!result.success) {
+      toast.error(result.error);
+      return false;
+    }
+
+    toast.success("Workspace deleted");
+    router.push("/browse");
+    router.refresh();
+    return true;
+  }
 
   return (
     <>
@@ -113,6 +137,31 @@ export function WorkspaceToolbar({
                 Share
               </Button>
             )}
+            {access.canShare && (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2"
+                      aria-label="Workspace options"
+                    >
+                      <MoreHorizontalIcon className="size-3.5" />
+                    </Button>
+                  }
+                />
+                <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuGroup>
+                    <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
+                      <Trash2Icon className="size-3.5" />
+                      Delete workspace
+                    </DropdownMenuItem>
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         }
       />
@@ -147,6 +196,15 @@ export function WorkspaceToolbar({
         onOpenChange={setImportOpen}
         workspaceId={workspace.id}
         onImported={() => router.refresh()}
+      />
+
+      <DeleteResourceDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Delete workspace"
+        description={`Delete “${workspace.name}”? All folders, sheets, and data in this workspace will be permanently removed. This cannot be undone.`}
+        confirmLabel="Delete workspace"
+        onConfirm={handleDeleteWorkspace}
       />
     </>
   );

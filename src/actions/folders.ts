@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-result";
 import { requireProfile } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
-import { createFolderSchema } from "@/lib/validations/folder";
+import { createFolderSchema, deleteFolderSchema } from "@/lib/validations/folder";
+import { collectSubtreeFolderIds } from "@/lib/folders/subtree";
 import type { Folder } from "@/types/domain";
 
 export async function listFolders(workspaceId: string): Promise<Folder[]> {
@@ -87,4 +88,63 @@ export async function createFolder(input: {
   revalidatePath(`/workspaces/${parsed.data.workspaceId}`);
 
   return actionSuccess(folder);
+}
+
+export async function deleteFolder(
+  folderId: string,
+): Promise<ActionResult<{ workspaceId: string }>> {
+  await requireProfile();
+  const parsed = deleteFolderSchema.safeParse({ folderId });
+
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "Invalid folder");
+  }
+
+  const supabase = await createClient();
+  const { data: folder, error: fetchError } = await supabase
+    .from("folders")
+    .select("id, workspace_id, name")
+    .eq("id", parsed.data.folderId)
+    .maybeSingle();
+
+  if (fetchError) {
+    return actionError(fetchError.message);
+  }
+
+  if (!folder) {
+    return actionError("Folder not found");
+  }
+
+  const { data: workspaceFolders, error: foldersError } = await supabase
+    .from("folders")
+    .select("id, parent_folder_id")
+    .eq("workspace_id", folder.workspace_id);
+
+  if (foldersError) {
+    return actionError(foldersError.message);
+  }
+
+  const subtreeIds = Array.from(
+    collectSubtreeFolderIds(folder.id, workspaceFolders ?? []),
+  );
+
+  const { error: sheetsError } = await supabase
+    .from("sheets")
+    .delete()
+    .in("folder_id", subtreeIds);
+
+  if (sheetsError) {
+    return actionError(sheetsError.message);
+  }
+
+  const { error } = await supabase.from("folders").delete().eq("id", folder.id);
+
+  if (error) {
+    return actionError(error.message);
+  }
+
+  revalidatePath(`/workspaces/${folder.workspace_id}`);
+  revalidatePath("/browse");
+
+  return actionSuccess({ workspaceId: folder.workspace_id });
 }
