@@ -323,27 +323,32 @@ function SheetRow({
           />
           <span className="truncate">{sheet.name}</span>
         </Link>
-        <SheetFavoriteButton sheetId={sheet.id} initialFavorited={Boolean(favorited)} />
-        {access.canShare && (
-          <TreeItemOverflowMenu
-            items={[
-              {
-                id: "share",
-                label: "Share sheet",
-                icon: <Share2Icon className="size-3.5" />,
-                onSelect: () => setShareOpen(true),
-              },
-              {
-                id: "delete",
-                label: "Delete sheet",
-                icon: <Trash2Icon className="size-3.5" />,
-                destructive: true,
-                separatorBefore: true,
-                onSelect: () => setDeleteOpen(true),
-              },
-            ]}
-          />
-        )}
+        <div className="flex shrink-0 items-center">
+          <SheetFavoriteButton sheetId={sheet.id} initialFavorited={Boolean(favorited)} />
+          {access.canShare && (
+            <div className="max-w-0 overflow-hidden opacity-0 transition-[max-width,opacity] duration-150 ease-out group-hover:max-w-6 group-hover:opacity-100 group-focus-within:max-w-6 group-focus-within:opacity-100 max-sm:max-w-6 max-sm:opacity-100">
+              <TreeItemOverflowMenu
+                triggerClassName="opacity-100"
+                items={[
+                  {
+                    id: "share",
+                    label: "Share sheet",
+                    icon: <Share2Icon className="size-3.5" />,
+                    onSelect: () => setShareOpen(true),
+                  },
+                  {
+                    id: "delete",
+                    label: "Delete sheet",
+                    icon: <Trash2Icon className="size-3.5" />,
+                    destructive: true,
+                    separatorBefore: true,
+                    onSelect: () => setDeleteOpen(true),
+                  },
+                ]}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       <ShareDialog

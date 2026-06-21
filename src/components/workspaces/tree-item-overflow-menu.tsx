@@ -25,9 +25,12 @@ export type TreeOverflowMenuItem = {
 export function TreeItemOverflowMenu({
   items,
   className,
+  triggerClassName,
 }: {
   items: TreeOverflowMenuItem[];
   className?: string;
+  /** Override default hover-reveal classes on the trigger button. */
+  triggerClassName?: string;
 }) {
   if (items.length === 0) {
     return null;
@@ -42,7 +45,9 @@ export function TreeItemOverflowMenu({
             variant="ghost"
             size="icon-sm"
             className={cn(
-              "size-6 shrink-0 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 sm:focus-visible:opacity-100",
+              "size-6 shrink-0",
+              triggerClassName ??
+                "opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 sm:focus-visible:opacity-100",
               className,
             )}
             aria-label="More actions"
