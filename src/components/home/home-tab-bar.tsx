@@ -6,7 +6,7 @@ import { HOME_TABS, type HomeTab } from "@/lib/navigation";
 
 export function HomeTabBar({ activeTab }: { activeTab: HomeTab }) {
   return (
-    <nav className="flex items-center gap-6 border-b px-3" aria-label="Home sections">
+    <nav className="flex items-center gap-6 border-b bg-background px-3 pt-1" aria-label="Home sections">
       {HOME_TABS.map((tab) => {
         const href = tab.id === "recents" ? "/" : `/?tab=${tab.id}`;
         const active = activeTab === tab.id;

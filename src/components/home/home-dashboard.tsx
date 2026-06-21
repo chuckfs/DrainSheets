@@ -9,7 +9,6 @@ import { HomeFavoritesTable } from "@/components/home/home-favorites-table";
 import { HomeRecentsTable } from "@/components/home/home-recents-table";
 import { HomeTabBar } from "@/components/home/home-tab-bar";
 import { ListPageShell } from "@/components/layout/list-page-shell";
-import { SheetHeader } from "@/components/layout/sheet-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { WorkspaceAvatar } from "@/components/workspaces/workspace-avatar";
 import { CreateWorkspaceGate } from "@/components/workspaces/create-workspace-gate";
@@ -30,14 +29,7 @@ export function HomeDashboard({
   showCreateWorkspace: boolean;
 }) {
   return (
-    <ListPageShell
-      header={
-        <>
-          <SheetHeader title="DrainSheets" />
-          <HomeTabBar activeTab={tab} />
-        </>
-      }
-    >
+    <ListPageShell header={<HomeTabBar activeTab={tab} />}>
       {tab === "recents" ? <HomeRecentsTable items={recents} /> : null}
 
       {tab === "favorites" ? <HomeFavoritesTable items={favorites} /> : null}
