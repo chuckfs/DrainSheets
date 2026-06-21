@@ -15,6 +15,7 @@ import { PaperclipIcon } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DocumentDescriptionEditor } from "./document-description-editor";
 import { DocumentPreviewDialog } from "./document-preview-dialog";
 import { DocumentVersionsDialog } from "./document-versions-dialog";
 
@@ -42,7 +43,7 @@ export function DocumentList({
   currentUserId: string;
   onChange: () => void;
 }) {
-  const [previewId, setPreviewId] = useState<string | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<DocumentWithUploader | null>(null);
   const [versionsDoc, setVersionsDoc] = useState<DocumentWithUploader | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -112,7 +113,7 @@ export function DocumentList({
                   <button
                     type="button"
                     className="truncate text-left text-sm font-medium hover:underline"
-                    onClick={() => setPreviewId(document.id)}
+                    onClick={() => setPreviewDoc(document)}
                   >
                     {document.file_name}
                   </button>
@@ -120,9 +121,12 @@ export function DocumentList({
                     {formatFileSize(document.file_size)}
                     {document.uploader?.name ? ` · ${document.uploader.name}` : ""}
                   </p>
-                  {document.description && (
-                    <p className="mt-1 text-xs text-muted-foreground">{document.description}</p>
-                  )}
+                  <DocumentDescriptionEditor
+                    documentId={document.id}
+                    value={document.description}
+                    canEdit={canRename(document)}
+                    onSaved={() => onChange()}
+                  />
                 </div>
                 <div className="flex shrink-0 gap-1">
                   <Button
@@ -165,11 +169,14 @@ export function DocumentList({
         ))}
       </ul>
       <DocumentPreviewDialog
-        documentId={previewId}
-        open={Boolean(previewId)}
+        document={previewDoc}
+        open={Boolean(previewDoc)}
+        canEdit={access.canEdit}
+        canManage={previewDoc ? canDelete(previewDoc) : false}
+        onVersionsChanged={onChange}
         onOpenChange={(open) => {
           if (!open) {
-            setPreviewId(null);
+            setPreviewDoc(null);
           }
         }}
       />

@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   deleteDocumentSchema,
   renameDocumentSchema,
+  updateDocumentDescriptionSchema,
   uploadDocumentSchema,
 } from "@/lib/validations/document";
 import type { Document, DocumentVersion, Profile } from "@/types/domain";
@@ -199,6 +200,47 @@ export async function renameDocument(
   const { data: document, error } = await supabase
     .from("documents")
     .update({ file_name: parsed.data.fileName })
+    .eq("id", documentId)
+    .select(
+      `
+      *,
+      uploader:profiles!documents_uploaded_by_fkey (
+        id,
+        name,
+        email
+      )
+    `,
+    )
+    .single();
+
+  if (error) {
+    return actionError(error.message);
+  }
+
+  revalidatePath(`/sheets/${document.sheet_id}`);
+  return actionSuccess({
+    ...document,
+    uploader: (document.uploader as DocumentWithUploader["uploader"]) ?? null,
+  });
+}
+
+export async function updateDocumentDescription(
+  documentId: string,
+  description: string | null,
+): Promise<ActionResult<DocumentWithUploader>> {
+  await requireProfile();
+  const parsed = updateDocumentDescriptionSchema.safeParse({ documentId, description });
+
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "Invalid description");
+  }
+
+  const supabase = await createClient();
+  const normalizedDescription = parsed.data.description?.trim() ? parsed.data.description.trim() : null;
+
+  const { data: document, error } = await supabase
+    .from("documents")
+    .update({ description: normalizedDescription })
     .eq("id", documentId)
     .select(
       `

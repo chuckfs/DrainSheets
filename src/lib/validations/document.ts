@@ -5,6 +5,11 @@ export const renameDocumentSchema = z.object({
   fileName: z.string().trim().min(1, "File name is required").max(255),
 });
 
+export const updateDocumentDescriptionSchema = z.object({
+  documentId: z.string().uuid(),
+  description: z.string().trim().max(1000).nullable(),
+});
+
 export const deleteDocumentSchema = z.object({
   documentId: z.string().uuid(),
 });
