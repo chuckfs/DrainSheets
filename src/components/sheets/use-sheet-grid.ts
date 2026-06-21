@@ -164,7 +164,7 @@ export function useSheetGrid({
   const selectionPointerStartRef = useRef<{ x: number; y: number } | null>(null);
   const history = useSheetHistory();
   const skipHistoryRef = useRef(false);
-  const { syncState, beginSave, endSave } = useSheetSync();
+  const { syncState, pendingSaveCount, acknowledgeSaved, beginSave, endSave } = useSheetSync();
   const [showHiddenRows, setShowHiddenRows] = useState(false);
   const [showHiddenColumns, setShowHiddenColumns] = useState(false);
 
@@ -1108,6 +1108,29 @@ export function useSheetGrid({
     setEditingCell(null);
   }, []);
 
+  const saveNow = useCallback(() => {
+    if (readOnly) {
+      return false;
+    }
+
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+
+    stopEditing();
+    setEditingColumnId(null);
+
+    if (pendingSaveCount > 0 || syncState === "saving") {
+      return false;
+    }
+
+    if (syncState === "error") {
+      return false;
+    }
+
+    return acknowledgeSaved();
+  }, [acknowledgeSaved, pendingSaveCount, readOnly, stopEditing, syncState]);
+
   const clearSelection = useCallback(() => {
     setSelectionRange(null);
     setSelectedCell(null);
@@ -1842,6 +1865,7 @@ export function useSheetGrid({
     extendSelectionTo,
     startEditing,
     stopEditing,
+    saveNow,
     commitCell,
     navigate,
     addRow,

@@ -20,6 +20,7 @@ import {
   PaintBucketIcon,
   PrinterIcon,
   Redo2Icon,
+  SaveIcon,
   TypeIcon,
   UnderlineIcon,
   Undo2Icon,
@@ -252,6 +253,27 @@ export function SheetRibbonToolbar({
   const activeColumn = grid.getActiveColumn();
   const [isExporting, startExport] = useTransition();
 
+  function handlePrint() {
+    window.open(`/sheets/${sheetId}/print`, "_blank", "noopener,noreferrer");
+  }
+
+  function handleSave() {
+    if (grid.syncState === "saving") {
+      toast.info("Saving…");
+      return;
+    }
+
+    if (grid.syncState === "error") {
+      toast.error("Some changes failed to save");
+      return;
+    }
+
+    const saved = grid.saveNow();
+    if (saved) {
+      toast.success("All changes saved");
+    }
+  }
+
   function handleExport(format: "csv" | "xlsx") {
     startExport(async () => {
       const result = await exportSheetData(sheetId, format, {
@@ -272,10 +294,35 @@ export function SheetRibbonToolbar({
   return (
     <GridToolbar
       left={
-        readOnly ? (
-          <span className="text-xs text-muted-foreground">View only</span>
-        ) : (
-          <>
+        <>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-7 gap-1 px-2 text-xs"
+            aria-label="Save"
+            disabled={readOnly}
+            onClick={handleSave}
+          >
+            <SaveIcon className="size-3.5" />
+            Save
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-7 gap-1 px-2 text-xs"
+            aria-label="Print"
+            onClick={handlePrint}
+          >
+            <PrinterIcon className="size-3.5" />
+            Print
+          </Button>
+          <ToolbarDivider />
+          {readOnly ? (
+            <span className="text-xs text-muted-foreground">View only</span>
+          ) : (
+            <>
             <Button
               type="button"
               size="icon-sm"
@@ -346,8 +393,9 @@ export function SheetRibbonToolbar({
               Fill
             </Button>
             <SheetFormatControls grid={grid} />
-          </>
-        )
+            </>
+          )}
+        </>
       }
       center={
         <>
@@ -399,12 +447,6 @@ export function SheetRibbonToolbar({
                 <DropdownMenuItem disabled={isExporting} onClick={() => handleExport("csv")}>
                   <FileTextIcon className="size-3.5" />
                   Export to CSV
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => window.open(`/sheets/${sheetId}/print`, "_blank", "noopener,noreferrer")}
-                >
-                  <PrinterIcon className="size-3.5" />
-                  Print
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
