@@ -494,20 +494,16 @@ export function WorkspaceTree({
   }
 
   return (
-    <div className={cn("border-x border-b py-1", dnd.isMoving && "pointer-events-none opacity-70")}>
-      {dnd.canEdit && dnd.dragging ? (
-        <div
-          className={cn(
-            "mx-2 mb-1 rounded-md border border-dashed px-3 py-1.5 text-xs text-muted-foreground transition-colors",
-            dnd.isRootDropTarget && "border-primary bg-primary/10 text-primary",
-          )}
-          onDragOver={dnd.handleRootDragOver}
-          onDragLeave={dnd.handleDragLeave}
-          onDrop={dnd.handleDropOnRoot}
-        >
-          Drop here to move to workspace root
-        </div>
-      ) : null}
+    <div
+      className={cn(
+        "border-x border-b py-1",
+        dnd.isMoving && "pointer-events-none opacity-70",
+        dnd.isRootDropTarget && "bg-primary/5",
+      )}
+      onDragOver={dnd.canEdit ? dnd.handleRootDragOver : undefined}
+      onDragLeave={dnd.canEdit ? dnd.handleDragLeave : undefined}
+      onDrop={dnd.canEdit ? dnd.handleDropOnRoot : undefined}
+    >
       <ul>
         {tree.folders.map((node) => (
           <FolderNode

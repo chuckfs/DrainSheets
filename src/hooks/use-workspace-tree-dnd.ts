@@ -114,6 +114,7 @@ export function useWorkspaceTreeDnD({
       }
 
       event.preventDefault();
+      event.stopPropagation();
       event.dataTransfer.dropEffect = "move";
       setDropTargetId(folderId);
     },
@@ -186,6 +187,7 @@ export function useWorkspaceTreeDnD({
   const handleDropOnFolder = useCallback(
     (event: React.DragEvent, folderId: string) => {
       event.preventDefault();
+      event.stopPropagation();
       const item = dragging ?? readTreeDragItem(event.dataTransfer);
       if (!canDropOnFolder(folderId, item)) {
         return;
