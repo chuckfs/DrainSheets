@@ -8,6 +8,7 @@ import {
   parseTemplateColumns,
   parseTemplateSeedRows,
 } from "@/lib/templates/template-utils";
+import { BLANK_SHEET_COLUMNS, BLANK_SHEET_SEED_ROWS } from "@/lib/sheets/blank-sheet";
 import { createClient } from "@/lib/supabase/server";
 import {
   createBlankSheetSchema,
@@ -246,8 +247,8 @@ export async function createBlankSheet(input: {
     description: parsed.data.description,
     templateId: null,
     templateVersion: null,
-    columns: [],
-    seedRows: [],
+    columns: BLANK_SHEET_COLUMNS,
+    seedRows: BLANK_SHEET_SEED_ROWS,
   });
 }
 

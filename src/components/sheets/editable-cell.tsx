@@ -18,6 +18,7 @@ import {
 import type { CellCoord, SheetGridController } from "./use-sheet-grid";
 import type { NavigateDirection } from "./cell-renderers/types";
 import { cellStyleClassName, cellStyleInline, type CellStyle } from "@/lib/sheets/cell-style";
+import { DEFAULT_ROW_HEIGHT } from "@/lib/sheets/row-heights";
 import { FillHandle } from "./fill-handle";
 import { GridContextMenu } from "./grid-context-menu";
 import { RowResizeHandle } from "./row-resize-handle";
@@ -133,6 +134,19 @@ function EditableCellComponent({
           disabled: grid.readOnly || !grid.selectedCell,
         },
         {
+          id: "insert-row-above",
+          label: "Insert row above",
+          onSelect: () => void grid.insertRowAt(rowIndex),
+          disabled: grid.readOnly,
+          separatorBefore: true,
+        },
+        {
+          id: "insert-row-below",
+          label: "Insert row below",
+          onSelect: () => void grid.insertRowAt(rowIndex + 1),
+          disabled: grid.readOnly,
+        },
+        {
           id: "clear",
           label: "Clear contents",
           onSelect: () => void grid.clearSelectionValues(),
@@ -164,22 +178,19 @@ function EditableCellComponent({
           if (event.button !== 0) {
             return;
           }
-          grid.beginSelection(coord, event.shiftKey);
+          grid.beginSelection(coord, event.shiftKey, {
+            clientX: event.clientX,
+            clientY: event.clientY,
+          });
         }}
         onPointerEnter={() => grid.updateDragSelection(coord)}
-        onClick={() => {
-          if (grid.readOnly) {
+        onDoubleClick={(event) => {
+          if (grid.readOnly || column.type === "checkbox") {
             return;
           }
 
-          if (column.type !== "checkbox" && column.type !== "contact") {
-            grid.startEditing(coord);
-          }
-        }}
-        onDoubleClick={() => {
-          if (!grid.readOnly) {
-            grid.startEditing(coord);
-          }
+          event.preventDefault();
+          grid.startEditing(coord);
         }}
         onKeyDown={handleContainerKeyDown}
       >
@@ -236,6 +247,7 @@ export function RowNumberCell({
 
   const isReadOnly = grid.readOnly;
   const rowHeight = grid.getRowHeight(rowIndex);
+  const hasCustomHeight = rowHeight !== DEFAULT_ROW_HEIGHT;
 
   return (
     <GridContextMenu
@@ -270,6 +282,12 @@ export function RowNumberCell({
           disabled: isReadOnly,
         },
         {
+          id: "reset-height",
+          label: "Reset row height",
+          onSelect: () => void grid.resetRowHeight(rowId),
+          disabled: isReadOnly || !hasCustomHeight,
+        },
+        {
           id: "unhide-all",
           label: "Unhide all rows",
           onSelect: () => void grid.unhideAllRows(),
@@ -287,7 +305,7 @@ export function RowNumberCell({
     >
       <div
         className={cn(
-          "relative flex h-full min-h-7 items-center justify-between gap-0.5 px-1 tabular-nums text-muted-foreground",
+          "group/row-number relative flex h-full min-h-7 items-center justify-between gap-0.5 px-1 tabular-nums text-muted-foreground",
           isRowSelected && "bg-primary/8",
           dragOver && "bg-primary/15",
         )}
@@ -354,10 +372,7 @@ export function RowNumberCell({
       </DropdownMenu>
       {!isReadOnly && !rowId.startsWith("temp-") ? (
         <RowResizeHandle
-          onResize={(deltaY) => {
-            const current = grid.getRowHeight(rowIndex);
-            grid.resizeRowHeight(rowId, current + deltaY);
-          }}
+          onResize={(deltaY) => grid.resizeRowHeight(rowId, deltaY)}
           onResizeEnd={() => {
             void grid.persistRowHeight(rowId, grid.getRowHeight(rowIndex));
           }}

@@ -73,6 +73,7 @@ import { getColumnDecimals } from "@/lib/sheets/column-config";
 import { previewColumnTypeCoercion } from "@/lib/sheets/coerce-column-type";
 import {
   clampRowHeight,
+  DEFAULT_ROW_HEIGHT,
   getRowHeight as getRowHeightFromRow,
   normalizeRowHeightForStorage,
 } from "@/lib/sheets/row-heights";
@@ -104,6 +105,27 @@ function parseRowData(row: Row): Record<string, Json | undefined> {
   return extractRowData(row);
 }
 
+const SELECT_DRAG_THRESHOLD_PX = 4;
+
+function coordFromPointerTarget(clientX: number, clientY: number): CellCoord | null {
+  const element = document
+    .elementFromPoint(clientX, clientY)
+    ?.closest<HTMLElement>("[data-row-index][data-col-index]");
+
+  if (!element) {
+    return null;
+  }
+
+  const rowIndex = Number(element.dataset.rowIndex);
+  const colIndex = Number(element.dataset.colIndex);
+
+  if (Number.isNaN(rowIndex) || Number.isNaN(colIndex)) {
+    return null;
+  }
+
+  return { rowIndex, colIndex };
+}
+
 export function useSheetGrid({
   sheetId,
   initialColumns,
@@ -127,6 +149,7 @@ export function useSheetGrid({
   const [selectedCell, setSelectedCell] = useState<CellCoord | null>(null);
   const [selectionRange, setSelectionRange] = useState<CellRange | null>(null);
   const [editingCell, setEditingCell] = useState<CellCoord | null>(null);
+  const [editingColumnId, setEditingColumnId] = useState<string | null>(null);
   const [savingCell, setSavingCell] = useState<{ rowId: string; columnKey: string } | null>(null);
   const [isAddingRow, setIsAddingRow] = useState(false);
   const [isSelecting, setIsSelecting] = useState(false);
@@ -136,6 +159,9 @@ export function useSheetGrid({
   const [rowHeightEpoch, setRowHeightEpoch] = useState(0);
   const rollbackRef = useRef<Map<string, Json | undefined>>(new Map());
   const selectionAnchorRef = useRef<CellCoord | null>(null);
+  const isPointerDownRef = useRef(false);
+  const dragSelectActiveRef = useRef(false);
+  const selectionPointerStartRef = useRef<{ x: number; y: number } | null>(null);
   const history = useSheetHistory();
   const skipHistoryRef = useRef(false);
   const { syncState, beginSave, endSave } = useSheetSync();
@@ -192,12 +218,51 @@ export function useSheetGrid({
   );
 
   useEffect(() => {
+    function handlePointerMove(event: PointerEvent) {
+      if (!isPointerDownRef.current || dragSelectActiveRef.current) {
+        return;
+      }
+
+      const start = selectionPointerStartRef.current;
+      if (!start) {
+        return;
+      }
+
+      const deltaX = event.clientX - start.x;
+      const deltaY = event.clientY - start.y;
+      if (Math.hypot(deltaX, deltaY) < SELECT_DRAG_THRESHOLD_PX) {
+        return;
+      }
+
+      dragSelectActiveRef.current = true;
+      setIsSelecting(true);
+
+      const coord = coordFromPointerTarget(event.clientX, event.clientY);
+      if (!coord) {
+        return;
+      }
+
+      const anchor = selectionAnchorRef.current ?? coord;
+      setSelectedCell(coord);
+      setSelectionRange({ start: anchor, end: coord });
+      setSelectionEpoch((value) => value + 1);
+    }
+
     function handlePointerUp() {
+      isPointerDownRef.current = false;
+      dragSelectActiveRef.current = false;
+      selectionPointerStartRef.current = null;
       setIsSelecting(false);
     }
 
+    window.addEventListener("pointermove", handlePointerMove);
     window.addEventListener("pointerup", handlePointerUp);
-    return () => window.removeEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerUp);
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerUp);
+    };
   }, []);
 
   const columnsWithWidths = useMemo(
@@ -261,9 +326,17 @@ export function useSheetGrid({
   }, []);
 
   const resizeRowHeight = useCallback(
-    (rowId: string, height: number) => {
-      const clamped = clampRowHeight(height);
-      setHeightOverrides((current) => ({ ...current, [rowId]: clamped }));
+    (rowId: string, deltaY: number) => {
+      if (deltaY === 0) {
+        return;
+      }
+
+      setHeightOverrides((current) => {
+        const rowIndex = rowsRef.current.findIndex((row) => row?.id === rowId);
+        const row = rowIndex >= 0 ? rowsRef.current[rowIndex] : null;
+        const base = current[rowId] ?? getRowHeightFromRow(row);
+        return { ...current, [rowId]: clampRowHeight(base + deltaY) };
+      });
       bumpRowHeightEpoch();
     },
     [bumpRowHeightEpoch],
@@ -316,6 +389,28 @@ export function useSheetGrid({
       return true;
     },
     [beginSave, bumpRowHeightEpoch, endSave, readOnly],
+  );
+
+  const resetRowHeight = useCallback(
+    async (rowId: string) => {
+      if (readOnly || rowId.startsWith("temp-")) {
+        return false;
+      }
+
+      setHeightOverrides((current) => {
+        if (!(rowId in current)) {
+          return current;
+        }
+
+        const next = { ...current };
+        delete next[rowId];
+        return next;
+      });
+      bumpRowHeightEpoch();
+
+      return persistRowHeight(rowId, DEFAULT_ROW_HEIGHT);
+    },
+    [bumpRowHeightEpoch, persistRowHeight, readOnly],
   );
 
   const getRowAt = useCallback((rowIndex: number): Row | null => {
@@ -999,7 +1094,11 @@ export function useSheetGrid({
         return;
       }
 
-      setSelectedCell(coord);
+      setSelectedCell((current) =>
+        current?.rowIndex === coord.rowIndex && current?.colIndex === coord.colIndex
+          ? current
+          : coord,
+      );
       setEditingCell(coord);
     },
     [readOnly],
@@ -1018,31 +1117,45 @@ export function useSheetGrid({
   }, [bumpSelectionEpoch]);
 
   const beginSelection = useCallback(
-    (coord: CellCoord, extend: boolean) => {
+    (
+      coord: CellCoord,
+      extend: boolean,
+      pointer?: { clientX: number; clientY: number },
+    ) => {
+      isPointerDownRef.current = true;
+
       if (extend && selectedCell) {
         selectionAnchorRef.current = selectionRange?.start ?? selectedCell;
         extendSelectionTo(coord);
-      } else {
-        selectionAnchorRef.current = coord;
-        selectSingleCell(coord);
+        dragSelectActiveRef.current = true;
+        setIsSelecting(true);
+        selectionPointerStartRef.current = null;
+        return;
       }
 
-      setIsSelecting(true);
+      selectionAnchorRef.current = coord;
+      selectSingleCell(coord);
+      dragSelectActiveRef.current = false;
+      setIsSelecting(false);
+      selectionPointerStartRef.current = pointer
+        ? { x: pointer.clientX, y: pointer.clientY }
+        : null;
     },
     [extendSelectionTo, selectSingleCell, selectedCell, selectionRange?.start],
   );
 
   const updateDragSelection = useCallback(
     (coord: CellCoord) => {
-      if (!isSelecting) {
+      if (!dragSelectActiveRef.current) {
         return;
       }
 
       const anchor = selectionAnchorRef.current ?? coord;
+      setSelectedCell(coord);
       setSelectionRange({ start: anchor, end: coord });
       bumpSelectionEpoch();
     },
-    [bumpSelectionEpoch, isSelecting],
+    [bumpSelectionEpoch],
   );
 
   const addRow = useCallback(async () => {
@@ -1121,10 +1234,26 @@ export function useSheetGrid({
       if (!skipHistoryRef.current) {
         history.push({ type: "column_add", column: newColumn });
       }
+      setEditingColumnId(newColumn.id);
       return true;
     },
     [history, readOnly, sheetId],
   );
+
+  const startEditingColumnLabel = useCallback(
+    (columnId: string) => {
+      if (readOnly) {
+        return;
+      }
+
+      setEditingColumnId(columnId);
+    },
+    [readOnly],
+  );
+
+  const stopEditingColumnLabel = useCallback(() => {
+    setEditingColumnId(null);
+  }, []);
 
   const renameColumn = useCallback(async (columnId: string, label: string) => {
     if (readOnly) {
@@ -1699,6 +1828,7 @@ export function useSheetGrid({
       maxCol: 0,
     },
     editingCell,
+    editingColumnId,
     savingCell,
     isAddingRow,
     isSelecting,
@@ -1716,6 +1846,8 @@ export function useSheetGrid({
     navigate,
     addRow,
     addColumn,
+    startEditingColumnLabel,
+    stopEditingColumnLabel,
     renameColumn,
     reorderColumn,
     saveSelectOptions,
@@ -1762,6 +1894,7 @@ export function useSheetGrid({
     clearFormatting,
     getRowHeight,
     resizeRowHeight,
+    resetRowHeight,
     persistRowHeight,
     rowHeightEpoch,
   };

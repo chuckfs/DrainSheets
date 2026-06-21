@@ -26,22 +26,42 @@ export function ColumnHeader({
   layout: ColumnLayout;
   grid: SheetGridController;
 }) {
-  const [isEditing, setIsEditing] = useState(false);
   const [draftLabel, setDraftLabel] = useState(column.label);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isMoving, startMove] = useTransition();
   const widthRef = useRef(layout.widthPx);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const isReadOnly = grid.readOnly;
+  const isEditing = grid.editingColumnId === column.id;
 
   useEffect(() => {
-    setDraftLabel(column.label);
-  }, [column.label]);
+    if (!isEditing) {
+      setDraftLabel(column.label);
+    }
+  }, [column.label, isEditing]);
 
   useEffect(() => {
     widthRef.current = layout.widthPx;
   }, [layout.widthPx]);
 
-  const isReadOnly = grid.readOnly;
+  useEffect(() => {
+    if (!isEditing) {
+      return;
+    }
+
+    setDraftLabel(column.label);
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    });
+  }, [column.label, isEditing]);
+
+  function cancelEditing() {
+    setDraftLabel(column.label);
+    grid.stopEditingColumnLabel();
+  }
 
   function saveLabel() {
     if (isReadOnly) {
@@ -49,7 +69,7 @@ export function ColumnHeader({
     }
 
     const trimmed = draftLabel.trim();
-    setIsEditing(false);
+    grid.stopEditingColumnLabel();
 
     if (!trimmed || trimmed === column.label) {
       setDraftLabel(column.label);
@@ -59,6 +79,14 @@ export function ColumnHeader({
     void grid.renameColumn(column.id, trimmed);
   }
 
+  function beginEditing() {
+    if (isReadOnly || isEditing) {
+      return;
+    }
+
+    grid.startEditingColumnLabel(column.id);
+  }
+
   return (
     <>
       <GridContextMenu
@@ -66,7 +94,7 @@ export function ColumnHeader({
           {
             id: "rename",
             label: "Rename column",
-            onSelect: () => setIsEditing(true),
+            onSelect: beginEditing,
             disabled: isReadOnly,
           },
           {
@@ -90,7 +118,7 @@ export function ColumnHeader({
           },
           {
             id: "add",
-            label: "Insert column",
+            label: "Insert column right",
             onSelect: () => void grid.addColumn("Column", "text"),
             disabled: isReadOnly,
             separatorBefore: true,
@@ -107,9 +135,9 @@ export function ColumnHeader({
       <div className="group relative flex min-w-0 items-center gap-1 pr-2">
         {isEditing ? (
           <Input
+            ref={inputRef}
             value={draftLabel}
-            autoFocus
-            className="h-6 px-1 text-xs uppercase"
+            className="h-6 min-w-0 flex-1 px-1 text-xs uppercase"
             onChange={(event) => setDraftLabel(event.target.value)}
             onBlur={saveLabel}
             onKeyDown={(event) => {
@@ -119,31 +147,31 @@ export function ColumnHeader({
               }
               if (event.key === "Escape") {
                 event.preventDefault();
-                setDraftLabel(column.label);
-                setIsEditing(false);
+                cancelEditing();
               }
             }}
           />
         ) : (
-          <button
-            type="button"
+          <div
+            role="presentation"
             className={cn(
-              "min-w-0 flex-1 truncate text-left text-xs font-medium uppercase tracking-wide text-muted-foreground",
+              "min-w-0 flex-1 cursor-default truncate text-left text-xs font-medium uppercase tracking-wide text-muted-foreground",
               "hover:text-foreground",
               column.is_pinned && "text-foreground",
             )}
-            onDoubleClick={() => {
-              if (!isReadOnly) {
-                setIsEditing(true);
-              }
+            onDoubleClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              beginEditing();
             }}
             title={isReadOnly ? column.label : "Double-click to rename"}
           >
             {column.is_pinned && <PinIcon className="mr-1 inline size-3" aria-hidden />}
             {column.label}
-          </button>
+          </div>
         )}
 
+        {!isEditing && (
         <div className={cn("flex shrink-0", !isReadOnly && "opacity-0 transition-opacity group-hover:opacity-100")}>
           {!isReadOnly && column.type === "select" && (
             <Button
@@ -205,6 +233,7 @@ export function ColumnHeader({
             </>
           )}
         </div>
+        )}
 
         {!isReadOnly && (
         <ColumnResizeHandle

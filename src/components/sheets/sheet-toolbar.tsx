@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { ColumnsIcon, PlusIcon, RowsIcon, Share2Icon } from "lucide-react";
+import { ColumnsIcon, RowsIcon, Share2Icon } from "lucide-react";
 import type { AccessContext } from "@/lib/access/effective-role";
 import type { Sheet } from "@/types/domain";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,6 @@ import { AccessBadge } from "@/components/shares/access-badge";
 import { ShareDialog } from "@/components/shares/share-dialog";
 import type { SheetTemplateProvenance } from "@/actions/templates";
 import { SheetTemplateProvenance as SheetTemplateProvenanceBadge } from "@/components/sheets/sheet-template-provenance";
-import { AddColumnDialog } from "./add-column-dialog";
 import type { SheetGridController } from "./use-sheet-grid";
 
 export function SheetToolbar({
@@ -26,9 +25,7 @@ export function SheetToolbar({
   templateProvenance: SheetTemplateProvenance;
   collaborationToggle?: ReactNode;
 }) {
-  const [addColumnOpen, setAddColumnOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-  const canEdit = access.canEdit && !grid.readOnly;
 
   return (
     <>
@@ -71,39 +68,8 @@ export function SheetToolbar({
                 Share
               </Button>
             )}
-            {canEdit && (
-              <>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-7 gap-1 text-xs"
-                  disabled={grid.isAddingRow}
-                  onClick={() => void grid.addRow()}
-                >
-                  <PlusIcon className="size-3.5" />
-                  Add row
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-7 gap-1 text-xs"
-                  onClick={() => setAddColumnOpen(true)}
-                >
-                  <ColumnsIcon className="size-3.5" />
-                  Add column
-                </Button>
-              </>
-            )}
           </div>
         }
-      />
-
-      <AddColumnDialog
-        open={addColumnOpen}
-        onOpenChange={setAddColumnOpen}
-        onAdd={grid.addColumn}
       />
 
       <ShareDialog

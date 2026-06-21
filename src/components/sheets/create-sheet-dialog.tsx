@@ -195,7 +195,7 @@ export function CreateSheetDialog({
 
           {mode === "blank" && (
             <p className="text-xs text-muted-foreground">
-              Creates an empty sheet with no columns. Add columns after creation.
+              Starts with one column and one empty row — double-click a header to rename, or expand with + or right-click.
             </p>
           )}
 

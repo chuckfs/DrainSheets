@@ -26,6 +26,7 @@ import type { Row } from "@/types/domain";
 import { cn } from "@/lib/utils";
 import { ColumnHeader } from "@/components/sheets/column-header";
 import { EditableCell, RowNumberCell } from "@/components/sheets/editable-cell";
+import { AddColumnHeadCell, AddRowFooter, RowNumberHeaderCell } from "@/components/sheets/grid-growth-controls";
 import type { SheetGridController } from "./use-sheet-grid";
 
 const ROW_HEIGHT = DEFAULT_ROW_HEIGHT;
@@ -82,7 +83,7 @@ export function SheetGrid({
   }, [grid.ensureRowsLoaded, rowVirtualizer.range?.startIndex, rowVirtualizer.range?.endIndex, visibleRowIndexes]);
 
   useEffect(() => {
-    if (!selectedCell || !gridRef.current) {
+    if (!selectedCell || !gridRef.current || grid.editingCell) {
       return;
     }
 
@@ -96,13 +97,18 @@ export function SheetGrid({
     const selector = `[data-row-index="${selectedCell.rowIndex}"][data-col-index="${selectedCell.colIndex}"]`;
     const element = gridRef.current.querySelector<HTMLElement>(selector);
     element?.focus();
-  }, [rowVirtualizer, selectedCell, visibleRowIndexes]);
+  }, [grid.editingCell, rowVirtualizer, selectedCell, visibleRowIndexes]);
 
   if (columnLayout.length === 0) {
     return (
-      <SmartsheetGridEmpty message="This sheet has no columns yet. Use Add column to create one." />
+      <SmartsheetGridEmpty message="This sheet has no columns. Right-click a column header or use + to add one." />
     );
   }
+
+  const visibleColumnCount = columnLayout.filter((layout, columnIndex) => {
+    const column = grid.columns[columnIndex];
+    return grid.showHiddenColumns || !column?.is_hidden;
+  }).length;
 
   return (
     <div
@@ -120,7 +126,7 @@ export function SheetGrid({
                 className="w-12 text-center"
                 style={{ width: ROW_NUMBER_WIDTH, minWidth: ROW_NUMBER_WIDTH }}
               >
-                #
+                <RowNumberHeaderCell grid={grid} />
               </SmartsheetGridPinHead>
               {columnLayout.map((layout, columnIndex) => {
                 const column = grid.columns[columnIndex];
@@ -138,16 +144,17 @@ export function SheetGrid({
                 />
                 );
               })}
+              <AddColumnHeadCell grid={grid} />
             </SmartsheetGridRow>
           </SmartsheetGridHeader>
           <SmartsheetGridBody>
             {totalRowCount === 0 ? (
               <SmartsheetGridRow>
-                <SmartsheetGridCell colSpan={columnLayout.length + 1} className="p-0">
+                <SmartsheetGridCell colSpan={visibleColumnCount + 2} className="p-0">
                   <EmptyState
                     icon={Rows3Icon}
                     title="No rows yet"
-                    description="Add your first row to start tracking data in this sheet."
+                    description="Use the + button below or right-click a row number to add a row."
                   />
                 </SmartsheetGridCell>
               </SmartsheetGridRow>
@@ -198,6 +205,7 @@ export function SheetGrid({
                     }}
                   />
                 )}
+                <AddRowFooter grid={grid} columnCount={visibleColumnCount + 1} />
               </>
             )}
           </SmartsheetGridBody>

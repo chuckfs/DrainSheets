@@ -221,7 +221,8 @@ If demand for any P3 item appears during the pilot, revisit with real usage data
 - **Build:** Drag fill handle on active cell with multi-row fill + batch undo history.
 - **Build:** Right-click context menus on cells, row headers, and column headers.
 - **Build:** Keyboard gaps — Delete/Backspace clear, type-to-edit, Escape deselect.
-- **Touches:** `src/components/sheets/sheet-ribbon-toolbar.tsx`, `fill-handle.tsx`, `grid-context-menu.tsx`, `use-sheet-grid.ts`, `use-sheet-keyboard.ts`.
+- **Build:** Row resize — drag handle on row `#` column (24–400px, persisted on `rows.height`); reset via row context menu; variable-height virtualizer.
+- **Touches:** `src/components/sheets/sheet-ribbon-toolbar.tsx`, `fill-handle.tsx`, `grid-context-menu.tsx`, `row-resize-handle.tsx`, `use-sheet-grid.ts`, `use-sheet-keyboard.ts`, migration `0017_row_height.sql`.
 
 ### P4-2 · Data tools ribbon (Phase 2) `[x]`
 - Type switcher, decimal controls, saved filter views, hide/unhide, auto-save indicator, export CSV/XLSX, print PDF.

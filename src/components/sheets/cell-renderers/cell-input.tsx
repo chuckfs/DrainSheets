@@ -64,7 +64,13 @@ export function CellInput({
   }
 
   function handleBlur(event: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) {
-    onCommit(event.target.value);
+    const related = event.relatedTarget;
+    const gridCell = event.currentTarget.closest('[role="gridcell"]');
+    if (related instanceof Node && gridCell?.contains(related)) {
+      return;
+    }
+
+    onCommit(event.currentTarget.value);
   }
 
   if (multiline) {

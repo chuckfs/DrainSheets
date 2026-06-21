@@ -7,16 +7,14 @@ export function RowResizeHandle({
   onResizeEnd,
 }: {
   onResize: (deltaY: number) => void;
-  onResizeEnd: (totalDelta: number) => void;
+  onResizeEnd: () => void;
 }) {
   const startYRef = useRef(0);
-  const totalDeltaRef = useRef(0);
 
   const handlePointerMove = useCallback(
     (event: PointerEvent) => {
       const delta = event.clientY - startYRef.current;
       startYRef.current = event.clientY;
-      totalDeltaRef.current += delta;
       onResize(delta);
     },
     [onResize],
@@ -25,15 +23,13 @@ export function RowResizeHandle({
   const handlePointerUp = useCallback(() => {
     window.removeEventListener("pointermove", handlePointerMove);
     window.removeEventListener("pointerup", handlePointerUp);
-    onResizeEnd(totalDeltaRef.current);
-    totalDeltaRef.current = 0;
+    onResizeEnd();
   }, [handlePointerMove, onResizeEnd]);
 
   function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
     event.preventDefault();
     event.stopPropagation();
     startYRef.current = event.clientY;
-    totalDeltaRef.current = 0;
     window.addEventListener("pointermove", handlePointerMove);
     window.addEventListener("pointerup", handlePointerUp);
   }
@@ -43,7 +39,7 @@ export function RowResizeHandle({
       role="separator"
       aria-orientation="horizontal"
       aria-label="Resize row"
-      className="absolute right-0 bottom-0 left-0 z-20 h-1.5 cursor-row-resize touch-none after:absolute after:inset-x-0 after:bottom-0 after:h-[2px] after:bg-primary after:opacity-0 after:transition-opacity hover:after:opacity-100"
+      className="absolute right-0 bottom-0 left-0 z-20 h-2 cursor-row-resize touch-none opacity-0 transition-opacity group-hover/row-number:opacity-100 after:absolute after:inset-x-0 after:bottom-0 after:h-[2px] after:bg-primary after:opacity-60 after:transition-opacity hover:after:opacity-100"
       onPointerDown={handlePointerDown}
     />
   );

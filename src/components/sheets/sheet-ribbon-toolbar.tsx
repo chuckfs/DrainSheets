@@ -158,19 +158,21 @@ function SheetFormatControls({ grid }: { grid: SheetGridController }) {
           }
         />
         <DropdownMenuContent align="start" className="w-40">
-          <DropdownMenuLabel>Text color</DropdownMenuLabel>
-          {TEXT_COLOR_PRESETS.map((preset) => (
-            <DropdownMenuItem
-              key={preset.label}
-              onClick={() => void grid.applyFormattingPatch({ color: preset.value ?? undefined })}
-            >
-              <span
-                className={cn("size-3 rounded-sm border border-border", !preset.value && "bg-background")}
-                style={preset.value ? { backgroundColor: preset.value } : undefined}
-              />
-              {preset.label}
-            </DropdownMenuItem>
-          ))}
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>Text color</DropdownMenuLabel>
+            {TEXT_COLOR_PRESETS.map((preset) => (
+              <DropdownMenuItem
+                key={preset.label}
+                onClick={() => void grid.applyFormattingPatch({ color: preset.value ?? undefined })}
+              >
+                <span
+                  className={cn("size-3 rounded-sm border border-border", !preset.value && "bg-background")}
+                  style={preset.value ? { backgroundColor: preset.value } : undefined}
+                />
+                {preset.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
       <DropdownMenu>
@@ -189,21 +191,23 @@ function SheetFormatControls({ grid }: { grid: SheetGridController }) {
           }
         />
         <DropdownMenuContent align="start" className="w-40">
-          <DropdownMenuLabel>Fill color</DropdownMenuLabel>
-          {FILL_COLOR_PRESETS.map((preset) => (
-            <DropdownMenuItem
-              key={preset.label}
-              onClick={() =>
-                void grid.applyFormattingPatch({ backgroundColor: preset.value ?? undefined })
-              }
-            >
-              <span
-                className="size-3 rounded-sm border border-border"
-                style={{ backgroundColor: preset.value ?? "transparent" }}
-              />
-              {preset.label}
-            </DropdownMenuItem>
-          ))}
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>Fill color</DropdownMenuLabel>
+            {FILL_COLOR_PRESETS.map((preset) => (
+              <DropdownMenuItem
+                key={preset.label}
+                onClick={() =>
+                  void grid.applyFormattingPatch({ backgroundColor: preset.value ?? undefined })
+                }
+              >
+                <span
+                  className="size-3 rounded-sm border border-border"
+                  style={{ backgroundColor: preset.value ?? "transparent" }}
+                />
+                {preset.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
       <ToolbarDivider />
